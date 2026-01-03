@@ -338,6 +338,29 @@
                 <div id="modalBadgeZone" style="display:none; margin: 10px 0;">
                     <span class="badge-peche">🪪 Carte de pêche valide</span>
                 </div>
+                
+                <!-- NOUVEAU: Créneau -->
+                <label>Créneau</label>
+                <select id="modalCreneau" style="width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px;">
+                    <option value="">-- Sélectionner --</option>
+                    <option value="Le matin">🌅 Le matin</option>
+                    <option value="L'après midi">☀️ L'après midi</option>
+                    <option value="La journée">📅 La journée</option>
+                </select>
+                
+                <!-- NOUVEAU: Mode (Individuel/Américaine) -->
+                <label>Mode de pêche</label>
+                <select id="modalMode" onchange="toggleBinomeField()" style="width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px;">
+                    <option value="Individuel">👤 Individuel</option>
+                    <option value="Américaine">👥 Américaine (binôme)</option>
+                </select>
+                
+                <!-- NOUVEAU: Binôme (affiché si Américaine) -->
+                <div id="binomeZone" style="display: none;">
+                    <label>Nom du binôme</label>
+                    <input type="text" id="modalBinome" placeholder="Nom et prénom du binôme">
+                </div>
+                
                 <div id="checkZone" style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="checkbox" id="modalControle" onchange="updateControlText()" style="width:22px; height:22px; cursor: pointer;"> 
@@ -1330,6 +1353,11 @@
         // =============================================
         // MODAL POSTE
         // =============================================
+        function toggleBinomeField() {
+            const mode = document.getElementById('modalMode').value;
+            document.getElementById('binomeZone').style.display = mode === 'Américaine' ? 'block' : 'none';
+        }
+        
         function openModal(n, data) {
             curP = n;
             document.getElementById('modalTitle').textContent = 'Poste ' + n;
@@ -1338,6 +1366,12 @@
             document.getElementById('modalPrenom').value = data.prenom || '';
             document.getElementById('modalControle').checked = data.controlled || false;
             document.getElementById('modalHeure').value = data.heure || '';
+            
+            // Nouveaux champs
+            document.getElementById('modalCreneau').value = data.creneau || '';
+            document.getElementById('modalMode').value = data.modeReservation || 'Individuel';
+            document.getElementById('modalBinome').value = data.binome || '';
+            toggleBinomeField();
             
             updateControlText();
             checkCardBadge();
@@ -1366,6 +1400,11 @@
             
             // Formater le prénom
             prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase();
+            
+            // Récupérer les nouveaux champs
+            const creneau = document.getElementById('modalCreneau').value;
+            const modeReservation = document.getElementById('modalMode').value;
+            const binome = document.getElementById('modalBinome').value.trim();
             
             // Vérifier si banni et récupérer les détails
             const bannissement = infractions.bannis ? infractions.bannis.find(b => 
@@ -1413,7 +1452,10 @@
                 nom: nom,
                 prenom: prenom,
                 controlled: document.getElementById('modalControle').checked,
-                heure: document.getElementById('modalHeure').value
+                heure: document.getElementById('modalHeure').value,
+                creneau: creneau,
+                modeReservation: modeReservation,
+                binome: modeReservation === 'Américaine' ? binome : ''
             };
             
             // Envoi vers Google Sheets
@@ -1423,6 +1465,9 @@
                 poste: curP,
                 nom: nom,
                 prenom: prenom,
+                creneau: creneau,
+                modeReservation: modeReservation,
+                binome: modeReservation === 'Américaine' ? binome : '',
                 controle: document.getElementById('modalControle').checked ? "Oui" : "Non",
                 heure: document.getElementById('modalHeure').value || ""
             });
