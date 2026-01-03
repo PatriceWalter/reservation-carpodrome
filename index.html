@@ -1108,8 +1108,8 @@
             const dayReservations = reservations[key] || {};
             let hasReservations = false;
             
-            for (let i = 1; i <= 12; i++) {
-                if (i !== 4 && dayReservations[i] && dayReservations[i].nom && dayReservations[i].nom.trim() !== '') {
+            for (let i = 1; i <= 14; i++) {
+                if (dayReservations[i] && dayReservations[i].nom && dayReservations[i].nom.trim() !== '') {
                     hasReservations = true;
                     break;
                 }
