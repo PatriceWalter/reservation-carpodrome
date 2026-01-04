@@ -462,16 +462,19 @@
         }
         
         // Synchroniser depuis Google Sheets vers Firebase
-        function syncFromGoogleSheets() {
-            if (!checkAdminPassword()) {
+        function syncFromGoogleSheets(silent = false) {
+            // Si pas en mode silencieux, vérifier le mot de passe admin
+            if (!silent && !checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
                 return;
             }
             
-            showAlert(`<div style="text-align: center;">
-                <div class="spinner" style="margin: 0 auto 15px auto;"></div>
-                <p>Synchronisation en cours...</p>
-            </div>`);
+            if (!silent) {
+                showAlert(`<div style="text-align: center;">
+                    <div class="spinner" style="margin: 0 auto 15px auto;"></div>
+                    <p>Synchronisation en cours...</p>
+                </div>`);
+            }
             
             // Générer un nom de callback unique
             const callbackName = 'googleSheetsCallback_' + Date.now();
@@ -489,11 +492,13 @@
                 
                 // Traiter les données
                 try {
-                    processSyncData(data);
+                    processSyncData(data, silent);
                 } catch(e) {
                     console.error("Erreur traitement:", e);
-                    closeAlert();
-                    showAlert("❌ Erreur lors du traitement : " + e.message);
+                    if (!silent) {
+                        closeAlert();
+                        showAlert("❌ Erreur lors du traitement : " + e.message);
+                    }
                 }
             };
             
@@ -509,12 +514,14 @@
                 if (script.parentNode) {
                     script.parentNode.removeChild(script);
                 }
-                closeAlert();
-                showAlert(`<div style="text-align: center;">
-                    <div style="font-size: 2em; margin-bottom: 10px;">❌</div>
-                    <h3 style="color: #dc3545;">Erreur de connexion</h3>
-                    <p style="margin-top: 10px;">Impossible de se connecter à Google Sheet.</p>
-                </div>`);
+                if (!silent) {
+                    closeAlert();
+                    showAlert(`<div style="text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">❌</div>
+                        <h3 style="color: #dc3545;">Erreur de connexion</h3>
+                        <p style="margin-top: 10px;">Impossible de se connecter à Google Sheet.</p>
+                    </div>`);
+                }
             };
             
             // Ajouter le script au document
@@ -530,17 +537,19 @@
                     if (scriptEl && scriptEl.parentNode) {
                         scriptEl.parentNode.removeChild(scriptEl);
                     }
-                    closeAlert();
-                    showAlert(`<div style="text-align: center;">
-                        <div style="font-size: 2em; margin-bottom: 10px;">⏱️</div>
-                        <h3 style="color: #ffc107;">Délai dépassé</h3>
-                        <p style="margin-top: 10px;">La synchronisation prend trop de temps.</p>
-                    </div>`);
+                    if (!silent) {
+                        closeAlert();
+                        showAlert(`<div style="text-align: center;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">⏱️</div>
+                            <h3 style="color: #ffc107;">Délai dépassé</h3>
+                            <p style="margin-top: 10px;">La synchronisation prend trop de temps.</p>
+                        </div>`);
+                    }
                 }
             }, 30000);
         }
         
-        function processSyncData(data) {
+        function processSyncData(data, silent = false) {
             if (data.status === "error") {
                 closeAlert();
                 showAlert("❌ Erreur : " + data.message);
@@ -731,18 +740,23 @@
                 }
             }
             
-            closeAlert();
-            showAlert(`<div style="text-align: center;">
-                <div style="font-size: 2em; margin-bottom: 10px;">✅</div>
-                <h3 style="color: #28a745;">Synchronisation terminée !</h3>
-                <div style="margin-top: 15px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                    <p><strong>📋 Réservations importées :</strong> ${countResa}</p>
-                    <p><strong>⚠️ Avertissements importés :</strong> ${countAvert}</p>
-                    <p><strong>🚫 Bannissements importés :</strong> ${countBan}</p>
-                    <p><strong>🪪 Pêcheurs valides importés :</strong> ${countValid}</p>
-                </div>
-                <p style="margin-top: 15px; font-size: 0.85em; color: #666;">Les données existantes n'ont pas été écrasées.</p>
-            </div>`);
+            // Afficher le message seulement si pas en mode silencieux
+            if (!silent) {
+                closeAlert();
+                showAlert(`<div style="text-align: center;">
+                    <div style="font-size: 2em; margin-bottom: 10px;">✅</div>
+                    <h3 style="color: #28a745;">Synchronisation terminée !</h3>
+                    <div style="margin-top: 15px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <p><strong>📋 Réservations importées :</strong> ${countResa}</p>
+                        <p><strong>⚠️ Avertissements importés :</strong> ${countAvert}</p>
+                        <p><strong>🚫 Bannissements importés :</strong> ${countBan}</p>
+                        <p><strong>🪪 Pêcheurs valides importés :</strong> ${countValid}</p>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.85em; color: #666;">Les données existantes n'ont pas été écrasées.</p>
+                </div>`);
+            } else {
+                console.log(`✅ Sync auto: ${countResa} résa, ${countAvert} avert, ${countBan} bannis, ${countValid} valides`);
+            }
             
             // Rafraîchir l'affichage
             renderAdminList();
@@ -1045,6 +1059,10 @@
                 setupFirebaseListeners();
                 renderMonths();
                 updateCounts();
+                
+                // Synchronisation automatique depuis Google Sheets à la connexion
+                console.log("🔄 Synchronisation automatique en cours...");
+                syncFromGoogleSheets(true); // true = mode silencieux (pas d'alerte)
                 
                 console.log("✅ Connexion réussie");
             } else {
