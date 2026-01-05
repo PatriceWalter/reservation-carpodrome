@@ -444,6 +444,20 @@
 
     <script>
         // =============================================
+        // AUTO-CONNEXION DEPUIS L'APPLICATION CONTRÔLEUR
+        // =============================================
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoconnect = urlParams.get('autoconnect');
+            if (autoconnect === '911') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.getElementById('loginPass').value = '911';
+                    setTimeout(function() { checkLogin(); }, 500);
+                });
+            }
+        })();
+
+        // =============================================
         // GOOGLE SHEETS BACKUP
         // =============================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAQDfPFUMrEQGxgY8JRufTTjYT1HknQ31WXOaid0w6Qfy9UBsSP-_UVW3t3az-F_ZZGg/exec";
@@ -463,7 +477,6 @@
         
         // Synchroniser depuis Google Sheets vers Firebase
         function syncFromGoogleSheets(silent = false) {
-            // Si pas en mode silencieux, vérifier le mot de passe admin
             if (!silent && !checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
                 return;
@@ -476,24 +489,18 @@
                 </div>`);
             }
             
-            // Capturer silent pour la closure
             const isSilent = silent;
-            
-            // Générer un nom de callback unique
             const callbackName = 'googleSheetsCallback_' + Date.now();
             
-            // Définir la fonction callback globale
             window[callbackName] = function(data) {
                 console.log("✅ Données reçues de Google Sheets:", data);
                 
-                // Nettoyer le script et le callback
                 const scriptEl = document.getElementById('jsonpScript_' + callbackName);
                 if (scriptEl) {
                     scriptEl.parentNode.removeChild(scriptEl);
                 }
                 delete window[callbackName];
                 
-                // Traiter les données
                 try {
                     processSyncData(data, isSilent);
                 } catch(e) {
@@ -505,7 +512,6 @@
                 }
             };
             
-            // Créer et ajouter le script JSONP
             const script = document.createElement('script');
             script.id = 'jsonpScript_' + callbackName;
             script.type = 'text/javascript';
@@ -527,11 +533,9 @@
                 }
             };
             
-            // Ajouter le script au document
             document.head.appendChild(script);
             console.log("📤 Script JSONP ajouté, attente de la réponse...");
             
-            // Timeout après 30 secondes
             setTimeout(function() {
                 if (window[callbackName]) {
                     console.warn("⏱️ Timeout - pas de réponse");
@@ -561,24 +565,17 @@
             
             let countResa = 0, countAvert = 0, countBan = 0, countValid = 0;
             
-            // Fonction pour convertir une date ISO en clé Firebase valide (YYYY-MM-DD)
             function formatDateKey(dateValue) {
                 if (!dateValue) return null;
-                
                 try {
-                    // Si c'est déjà au bon format YYYY-MM-DD
                     if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
                         return dateValue;
                     }
-                    
-                    // Si c'est une date ISO ou autre format
                     const date = new Date(dateValue);
                     if (isNaN(date.getTime())) return null;
-                    
                     const year = date.getFullYear();
                     const month = String(date.getMonth() + 1).padStart(2, '0');
                     const day = String(date.getDate()).padStart(2, '0');
-                    
                     return `${year}-${month}-${day}`;
                 } catch(e) {
                     console.error("Erreur conversion date:", e);
@@ -586,30 +583,22 @@
                 }
             }
             
-            // Fonction pour convertir une heure ISO en format HH:MM
             function formatHeure(heureValue) {
                 if (!heureValue) return "";
-                
                 try {
-                    // Si c'est déjà au bon format HH:MM
                     if (typeof heureValue === 'string' && /^\d{2}:\d{2}$/.test(heureValue)) {
                         return heureValue;
                     }
-                    
-                    // Si c'est une date ISO
                     const date = new Date(heureValue);
                     if (isNaN(date.getTime())) return "";
-                    
                     const hours = String(date.getHours()).padStart(2, '0');
                     const minutes = String(date.getMinutes()).padStart(2, '0');
-                    
                     return `${hours}:${minutes}`;
                 } catch(e) {
                     return "";
                 }
             }
             
-            // Traiter les réservations
             if (data.reservations && data.reservations.length > 0) {
                 data.reservations.forEach(r => {
                     const dateKey = formatDateKey(r.dateJour);
@@ -617,7 +606,6 @@
                         if (!reservations[dateKey]) {
                             reservations[dateKey] = {};
                         }
-                        // Ne pas écraser si déjà existant
                         if (!reservations[dateKey][r.poste]) {
                             reservations[dateKey][r.poste] = {
                                 nom: r.nom,
@@ -638,16 +626,13 @@
                 }
             }
             
-            // Traiter les avertissements
             if (data.avertissements && data.avertissements.length > 0) {
                 data.avertissements.forEach(a => {
                     if (a.nom) {
-                        // Vérifier si n'existe pas déjà
                         let avertList = [];
                         if (infractions.avertissements) {
                             avertList = Array.isArray(infractions.avertissements) ? infractions.avertissements : Object.values(infractions.avertissements);
                         }
-                        
                         const exists = avertList.some(existing => 
                             existing.nom === a.nom && 
                             existing.prenom === a.prenom && 
@@ -674,16 +659,13 @@
                 });
             }
             
-            // Traiter les bannissements
             if (data.bannis && data.bannis.length > 0) {
                 data.bannis.forEach(b => {
                     if (b.nom) {
-                        // Vérifier si n'existe pas déjà
                         let banList = [];
                         if (infractions.bannis) {
                             banList = Array.isArray(infractions.bannis) ? infractions.bannis : Object.values(infractions.bannis);
                         }
-                        
                         const exists = banList.some(existing => 
                             existing.nom === b.nom && 
                             existing.prenom === b.prenom
@@ -712,16 +694,13 @@
                 saveInfractions();
             }
             
-            // Traiter les pêcheurs valides
             if (data.validUsers && data.validUsers.length > 0) {
                 data.validUsers.forEach(v => {
                     if (v.nom) {
-                        // Vérifier si n'existe pas déjà
                         let validList = [];
                         if (validUsers) {
                             validList = Array.isArray(validUsers) ? validUsers : Object.values(validUsers);
                         }
-                        
                         const exists = validList.some(existing => 
                             existing.nom === v.nom && 
                             existing.prenom === v.prenom
@@ -743,7 +722,6 @@
                 }
             }
             
-            // Afficher le message seulement si pas en mode silencieux
             if (!silent) {
                 closeAlert();
                 showAlert(`<div style="text-align: center;">
@@ -761,12 +739,10 @@
                 console.log(`✅ Sync auto: ${countResa} résa, ${countAvert} avert, ${countBan} bannis, ${countValid} valides`);
             }
             
-            // Rafraîchir l'affichage
             renderAdminList();
             updateCounts();
         }
         
-        // Exporter toutes les données Firebase vers Google Sheet
         function exportToGoogleSheets() {
             if (!checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
@@ -779,10 +755,8 @@
                 <p style="font-size: 0.85em; color: #666;">Cela peut prendre quelques secondes.</p>
             </div>`);
             
-            // Collecter toutes les données à envoyer
             let dataToSend = [];
             
-            // Collecter les réservations
             for (const dateJour in reservations) {
                 for (const poste in reservations[dateJour]) {
                     const r = reservations[dateJour][poste];
@@ -800,7 +774,6 @@
                 }
             }
             
-            // Collecter les avertissements
             let avertissementsList = [];
             if (infractions.avertissements) {
                 if (Array.isArray(infractions.avertissements)) {
@@ -821,7 +794,6 @@
                 }
             });
             
-            // Collecter les bannissements
             let bannisList = [];
             if (infractions.bannis) {
                 if (Array.isArray(infractions.bannis)) {
@@ -850,7 +822,6 @@
                 }
             });
             
-            // Collecter les pêcheurs valides
             let validUsersList = [];
             if (validUsers) {
                 if (Array.isArray(validUsers)) {
@@ -869,22 +840,19 @@
                 }
             });
             
-            // Compter par type
             let countResa = dataToSend.filter(d => d.type === "reservation").length;
             let countAvert = dataToSend.filter(d => d.type === "avertissement").length;
             let countBan = dataToSend.filter(d => d.type === "bannissement").length;
             let countValid = dataToSend.filter(d => d.type === "pecheur_valide").length;
             
-            // Envoyer les données une par une avec délai
             let index = 0;
             
             function sendNext() {
                 if (index < dataToSend.length) {
                     sendToGoogleSheets(dataToSend[index]);
                     index++;
-                    setTimeout(sendNext, 300); // 300ms entre chaque envoi
+                    setTimeout(sendNext, 300);
                 } else {
-                    // Terminé
                     closeAlert();
                     showAlert(`<div style="text-align: center;">
                         <div style="font-size: 2em; margin-bottom: 10px;">✅</div>
@@ -900,7 +868,6 @@
                 }
             }
             
-            // Démarrer l'envoi
             if (dataToSend.length > 0) {
                 sendNext();
             } else {
@@ -923,7 +890,6 @@
             measurementId: "G-KM72SWNSS9"
         };
 
-        // Initialize Firebase
         let app, database;
         let firebaseReady = false;
 
@@ -941,29 +907,24 @@
         // =============================================
         // CONFIGURATION & DONNÉES
         // =============================================
-        // Du 1er mars au 4 mai : samedis et dimanches uniquement
-        // Du 5 mai au 30 octobre : tous les jours
-        // NOTE: Les index sont 0-based (0 = Janvier, 2 = Mars, etc.)
         const JOURS_OUVERTURE = {
-            2: [1, 7, 8, 14, 15, 21, 22, 28, 29],  // Mars 2026 : samedis et dimanches (index 2)
-            3: [11, 12, 18, 19, 25, 26],     // Avril 2026 : samedis et dimanches (index 3) - sans 4 et 5
-            4: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],  // Mai : 2-4 sam/dim/lun, 5-31 tous les jours (index 4)
-            5: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],      // Juin : tous les jours (index 5)
-            6: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],  // Juillet : tous les jours (index 6)
-            7: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],  // Août : tous les jours (index 7)
-            8: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],      // Septembre : tous les jours (index 8)
-            9: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]       // Octobre : tous les jours jusqu'au 30 (index 9)
+            2: [1, 7, 8, 14, 15, 21, 22, 28, 29],
+            3: [11, 12, 18, 19, 25, 26],
+            4: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+            5: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+            6: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+            7: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+            8: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+            9: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
         };
         
-        const FERME_MATIN = { 2: [28], 3: [25], 5: [13], 8: [19], 9: [17] };  // Jours fermés le matin (index 0-based: 2=mars, 3=avril, 5=juin, 8=sept, 9=oct)
+        const FERME_MATIN = { 2: [28], 3: [25], 5: [13], 8: [19], 9: [17] };
         const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-        // Données locales (synchronisées avec Firebase)
         let reservations = {};
         let infractions = { avertissements: [], bannis: [] };
         let validUsers = [];
         
-        // Variables de navigation
         let curM, curMName, curDKey, curP, curFullDate, pendingSanctionType;
 
         // =============================================
@@ -972,7 +933,6 @@
         function setupFirebaseListeners() {
             if (!firebaseReady) return;
 
-            // Écouter les changements de connexion
             const connectedRef = database.ref(".info/connected");
             connectedRef.on("value", (snap) => {
                 const statusEl = document.getElementById('syncStatus');
@@ -985,7 +945,6 @@
                 }
             });
 
-            // Écouter les réservations
             database.ref('reservations').on('value', (snapshot) => {
                 reservations = snapshot.val() || {};
                 console.log("📥 Réservations mises à jour");
@@ -994,7 +953,6 @@
                 }
             });
 
-            // Écouter les infractions
             database.ref('infractions').on('value', (snapshot) => {
                 infractions = snapshot.val() || { avertissements: [], bannis: [] };
                 if (!infractions.avertissements) infractions.avertissements = [];
@@ -1003,7 +961,6 @@
                 updateCounts();
             });
 
-            // Écouter les utilisateurs valides
             database.ref('validUsers').on('value', (snapshot) => {
                 const data = snapshot.val();
                 validUsers = data ? Object.values(data) : [];
@@ -1063,9 +1020,8 @@
                 renderMonths();
                 updateCounts();
                 
-                // Synchronisation automatique depuis Google Sheets à la connexion
                 console.log("🔄 Synchronisation automatique en cours...");
-                syncFromGoogleSheets(true); // true = mode silencieux (pas d'alerte)
+                syncFromGoogleSheets(true);
                 
                 console.log("✅ Connexion réussie");
             } else {
@@ -1076,7 +1032,6 @@
             }
         }
 
-        // Connexion avec la touche Entrée
         document.getElementById("loginPass").addEventListener("keyup", function(e) {
             if (e.key === "Enter") {
                 checkLogin();
@@ -1093,10 +1048,9 @@
         function accesControleur() {
             const today = new Date();
             const jour = today.getDate();
-            const mois = today.getMonth(); // 0-11
+            const mois = today.getMonth();
             const annee = today.getFullYear();
             
-            // Vérifier si on est en 2026
             if (annee !== 2026) {
                 showAlert(`<div style="text-align: center;">
                     <div style="font-size: 3em; margin-bottom: 15px;">📅</div>
@@ -1107,7 +1061,6 @@
                 return;
             }
             
-            // Vérifier si l'étang est ouvert ce jour
             const joursOuverts = JOURS_OUVERTURE[mois] || [];
             const isOpen = joursOuverts.includes(jour);
             
@@ -1121,11 +1074,9 @@
                 return;
             }
             
-            // L'étang est ouvert - construire la clé du jour
             const key = `2026-${String(mois + 1).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
             const dateFull = today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
             
-            // Vérifier s'il y a des réservations
             const dayReservations = reservations[key] || {};
             let hasReservations = false;
             
@@ -1146,7 +1097,6 @@
                 return;
             }
             
-            // Il y a des réservations - afficher la page des postes
             curM = mois;
             curMName = MOIS_NOMS[mois];
             showPostes(jour, key, dateFull);
@@ -1172,7 +1122,6 @@
         function renderMonths() {
             const grid = document.getElementById('monthsGrid');
             grid.innerHTML = MOIS_NOMS.map((m, i) => {
-                // N'afficher que les mois qui ont des jours d'ouverture
                 if (!JOURS_OUVERTURE[i] || JOURS_OUVERTURE[i].length === 0) return '';
                 return `<div class="month-card" onclick="showDays(${i}, '${m}')">
                     <div class="month-name">${m}</div>
@@ -1201,7 +1150,6 @@
                 const key = `2026-${String(m + 1).padStart(2, '0')}-${String(j).padStart(2, '0')}`;
                 const isFermeMatin = FERME_MATIN[m] && FERME_MATIN[m].includes(j);
                 
-                // Calculer le nombre de postes libres
                 const dayReservations = reservations[key] || {};
                 let postesReserves = 0;
                 for (let i = 1; i <= 14; i++) {
@@ -1211,7 +1159,6 @@
                 }
                 const postesLibres = 14 - postesReserves;
                 
-                // Affichage selon le nombre de postes libres
                 let postesLibresHtml = '';
                 if (postesLibres === 0) {
                     postesLibresHtml = '<div style="color: #dc3545; font-weight: bold; font-size: 1em; margin-bottom: 5px;">COMPLET</div>';
@@ -1256,7 +1203,6 @@
             for (let i = 1; i <= 14; i++) {
                 const data = reservations[curDKey][i] || { nom: '', prenom: '', controlled: false };
                 
-                // Stats (tous les postes comptent maintenant)
                 if (data.nom && data.nom.trim() !== '') {
                     reserves++;
                     if (data.controlled) controles++;
@@ -1276,7 +1222,6 @@
             const div = document.createElement('div');
             const hasName = data.nom && data.nom.trim() !== '';
             
-            // Classes CSS - tous les postes sont normaux maintenant
             let className = 'poste-box ';
             if (data.controlled) {
                 className += 'controle';
@@ -1297,28 +1242,23 @@
             
             html += `<div class="poste-title">Poste ${n}</div>`;
             
-            // Heure de contrôle
             if (data.controlled && data.heure) {
                 html += `<div class="poste-heure">🕒 ${data.heure}</div>`;
             }
             
-            // Nom du pêcheur
             if (hasName) {
                 html += `<div class="poste-nom">${data.nom.toUpperCase()} ${data.prenom}</div>`;
                 
-                // Afficher le binôme si américaine
                 if (data.binome && data.modeReservation === "Américaine") {
                     html += `<div class="poste-nom" style="color: #667eea;">${data.binome}</div>`;
                 }
                 
-                // Afficher le mode (Individuel ou Américaine)
                 if (data.modeReservation === "Américaine") {
                     html += `<div style="font-size: 0.8em; color: #e53e3e; margin-top: 3px; font-weight: bold;">👥 Américaine</div>`;
                 } else {
                     html += `<div style="font-size: 0.8em; color: #38a169; margin-top: 3px;">👤 Individuel</div>`;
                 }
                 
-                // Afficher le créneau
                 if (data.creneau) {
                     let creneauIcon = '📅';
                     if (data.creneau.toLowerCase().includes('matin')) creneauIcon = '🌅';
@@ -1336,7 +1276,6 @@
             
             html += '</div>';
             
-            // Zone de contrôle en bas (pour tous les postes maintenant)
             const labelText = data.controlled ? `Contrôlé à ${data.heure || ''}` : 'Cliquer pour valider le contrôle';
             const labelClass = data.controlled ? 'control-label checked' : 'control-label';
             html += `<div class="control-zone">
@@ -1390,7 +1329,6 @@
             document.getElementById('modalControle').checked = data.controlled || false;
             document.getElementById('modalHeure').value = data.heure || '';
             
-            // Nouveaux champs
             document.getElementById('modalCreneau').value = data.creneau || '';
             document.getElementById('modalMode').value = data.modeReservation || 'Individuel';
             document.getElementById('modalBinome').value = data.binome || '';
@@ -1399,10 +1337,7 @@
             updateControlText();
             checkCardBadge();
             
-            // Masquer la zone de contrôle - plus besoin, tous les postes ont le contrôle
             document.getElementById('checkZone').style.display = 'block';
-            
-            // Afficher les boutons infractions si un nom est présent
             document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none';
             
             document.getElementById('posteModal').style.display = 'block';
@@ -1421,27 +1356,22 @@
                 return;
             }
             
-            // Formater le prénom
             prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase();
             
-            // Récupérer les nouveaux champs
             const creneau = document.getElementById('modalCreneau').value;
             const modeReservation = document.getElementById('modalMode').value;
             const binome = document.getElementById('modalBinome').value.trim();
             
-            // Vérifier si banni et récupérer les détails
             const bannissement = infractions.bannis ? infractions.bannis.find(b => 
                 b.nom && b.nom.toUpperCase() === nom && 
                 b.prenom && b.prenom.toLowerCase() === prenom.toLowerCase()
             ) : null;
             
             if (bannissement) {
-                // Construire le message avec les motifs
                 let message = `<div style="text-align: left;">
                     <h3 style="text-align: center; color: #dc3545; margin-bottom: 15px;">🚫 INSCRIPTION IMPOSSIBLE</h3>
                     <p style="text-align: center; margin-bottom: 15px;"><strong>${nom} ${prenom}</strong> est banni.</p>`;
                 
-                // Afficher les motifs
                 if (bannissement.motifs && bannissement.motifs.length > 0) {
                     message += `<div class="info-motifs" style="background: #f8d7da; border-color: #dc3545;">
                         <h4 style="color: #721c24;">Motifs du bannissement :</h4>`;
@@ -1481,7 +1411,6 @@
                 binome: modeReservation === 'Américaine' ? binome : ''
             };
             
-            // Envoi vers Google Sheets
             sendToGoogleSheets({
                 type: "reservation",
                 dateJour: curDKey,
@@ -1579,7 +1508,6 @@
             }
             
             if (type === 'avertissements') {
-                // Affichage des avertissements
                 container.innerHTML = list.map((item, index) => `
                     <div class="infraction-item ${item.archived ? 'archive' : 'avertissement'}">
                         <div class="infraction-header">
@@ -1596,7 +1524,6 @@
                     </div>
                 `).join('');
             } else {
-                // Affichage des bannis avec tous les motifs
                 container.innerHTML = list.map((item, index) => {
                     let motifsHtml = '';
                     if (item.motifs && item.motifs.length > 0) {
@@ -1630,7 +1557,6 @@
             }
         }
 
-        // Supprimer un avertissement (avec mot de passe)
         function removeAvertissement(index) {
             if (!checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
@@ -1643,7 +1569,6 @@
             showAlert("✅ Avertissement supprimé.");
         }
 
-        // Supprimer un banni (avec mot de passe)
         function removeBanni(index) {
             if (!checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
@@ -1656,7 +1581,6 @@
             showAlert("✅ Bannissement supprimé.");
         }
 
-        // Débannir quelqu'un (avec mot de passe)
         function debannir(index) {
             if (!checkAdminPassword()) {
                 showAlert("❌ Mot de passe incorrect !");
@@ -1665,7 +1589,6 @@
             
             const banni = infractions.bannis[index];
             
-            // Si le banni avait des motifs d'avertissements, les remettre dans les avertissements
             if (banni.motifs && banni.motifs.length > 0) {
                 banni.motifs.forEach(m => {
                     infractions.avertissements.push({
@@ -1674,12 +1597,11 @@
                         prenom: banni.prenom,
                         motif: m.motif,
                         date: m.date,
-                        archived: true // Marquer comme archivé
+                        archived: true
                     });
                 });
             }
             
-            // Supprimer de la liste des bannis
             infractions.bannis.splice(index, 1);
             
             saveInfractions();
@@ -1709,7 +1631,6 @@
             if (!infractions.bannis) infractions.bannis = [];
             
             if (pendingSanctionType === 'avertissements') {
-                // Ajouter l'avertissement
                 infractions.avertissements.push({
                     id: Date.now().toString(),
                     nom: nom,
@@ -1718,7 +1639,6 @@
                     date: dateNow
                 });
                 
-                // Envoi vers Google Sheets
                 sendToGoogleSheets({
                     type: "avertissement",
                     nom: nom,
@@ -1727,14 +1647,12 @@
                     archive: "Non"
                 });
                 
-                // Vérifier si 3 avertissements -> bannissement automatique
                 const fullName = (nom + ' ' + prenomFormatted).toLowerCase();
                 const userAvertissements = infractions.avertissements.filter(a => 
                     (a.nom + ' ' + a.prenom).toLowerCase() === fullName && !a.archived
                 );
                 
                 if (userAvertissements.length >= 3) {
-                    // Créer le bannissement avec les 3 motifs
                     const motifs = userAvertissements.map(a => ({
                         motif: a.motif,
                         date: a.date
@@ -1748,7 +1666,6 @@
                         date: dateNow
                     });
                     
-                    // Envoi vers Google Sheets
                     sendToGoogleSheets({
                         type: "bannissement",
                         nom: nom,
@@ -1756,7 +1673,6 @@
                         motifs: motifs.map((m, i) => `#${i+1}: ${m.motif} (${m.date})`).join(" | ")
                     });
                     
-                    // Supprimer les avertissements de la liste
                     infractions.avertissements = infractions.avertissements.filter(a => 
                         (a.nom + ' ' + a.prenom).toLowerCase() !== fullName || a.archived
                     );
@@ -1774,7 +1690,6 @@
                 showAlert(`✅ Avertissement enregistré pour <strong>${nom} ${prenomFormatted}</strong><br>(${userAvertissements.length}/3)`);
                 
             } else {
-                // Bannissement direct
                 infractions.bannis.push({
                     id: Date.now().toString(),
                     nom: nom,
@@ -1783,7 +1698,6 @@
                     date: dateNow
                 });
                 
-                // Envoi vers Google Sheets
                 sendToGoogleSheets({
                     type: "bannissement",
                     nom: nom,
@@ -1804,15 +1718,12 @@
         function checkInfo(nom, prenom) {
             const fullName = (nom + ' ' + prenom).toLowerCase();
             
-            // Récupérer tous les avertissements de cette personne (non archivés)
             const avertissements = infractions.avertissements ? 
                 infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fullName && !a.archived) : [];
             
-            // Récupérer les avertissements archivés
             const avertissementsArchives = infractions.avertissements ? 
                 infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fullName && a.archived) : [];
             
-            // Récupérer le bannissement s'il existe
             const bannissement = infractions.bannis ? 
                 infractions.bannis.find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fullName) : null;
             
@@ -1821,10 +1732,8 @@
             let html = `<div style="text-align: left;">`;
             html += `<h3 style="text-align: center; margin-bottom: 15px;">${nom.toUpperCase()} ${prenom}</h3>`;
             
-            // Statut carte de pêche
             html += `<p style="margin: 8px 0;">${isValid ? '🪪 Carte de pêche valide' : '❌ Pas de carte enregistrée'}</p>`;
             
-            // Statut bannissement
             if (bannissement) {
                 html += `<p style="margin: 8px 0; color: #dc3545; font-weight: bold; font-size: 1.2em;">🚫 BANNI</p>`;
                 if (bannissement.motifs && bannissement.motifs.length > 0) {
@@ -1852,7 +1761,6 @@
                 html += `<p style="margin: 8px 0; color: #28a745;">✅ Non banni</p>`;
             }
             
-            // Avertissements actifs
             html += `<p style="margin: 15px 0 8px 0; font-weight: bold;">⚠️ Avertissements actifs : ${avertissements.length}/3</p>`;
             
             if (avertissements.length > 0) {
@@ -1867,7 +1775,6 @@
                 html += `</div>`;
             }
             
-            // Avertissements archivés
             if (avertissementsArchives.length > 0) {
                 html += `<p style="margin: 15px 0 8px 0; font-weight: bold; color: #6c757d;">📁 Infractions archivées : ${avertissementsArchives.length}</p>`;
                 html += `<div class="info-motifs" style="background: #e9ecef; border-color: #6c757d;">`;
@@ -1880,7 +1787,6 @@
                 html += `</div>`;
             }
             
-            // Alerte si 3 avertissements
             if (avertissements.length >= 3 && !bannissement) {
                 html += `<p style="color:#dc3545; font-weight:bold; text-align: center; margin-top: 15px; padding: 10px; background: #f8d7da; border-radius: 5px;">⚠️ 3 avertissements atteints !<br>Bannissement automatique appliqué</p>`;
             }
@@ -1913,7 +1819,6 @@
                 prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase();
                 validUsers.push({ nom: nom, prenom: prenom });
                 
-                // Envoi vers Google Sheets
                 sendToGoogleSheets({
                     type: "pecheur_valide",
                     nom: nom,
