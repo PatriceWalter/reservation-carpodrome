@@ -410,6 +410,7 @@
                 </div>
                 
                 <button class="btn" style="width:100%; background:#eee; color:#333; margin-top:15px;" onclick="closeAdmin()">Fermer</button>
+                <button class="btn" style="width:100%; background:#dc3545; color:white; margin-top:10px;" onclick="window.close()">❌ Fermer la page</button>
             </div>
         </div>
     </div>
@@ -1016,6 +1017,8 @@
                 document.getElementById('mainApp').style.display = 'block';
                 document.body.className = 'app-mode';
                 
+                sessionStorage.setItem('logged', 'true');
+                
                 setupFirebaseListeners();
                 renderMonths();
                 updateCounts();
@@ -1039,6 +1042,8 @@
         });
 
         function logout() {
+            sessionStorage.removeItem('logged');
+            sessionStorage.removeItem('currentView');
             location.reload();
         }
 
@@ -1427,6 +1432,7 @@
             saveReservations();
             renderPostes();
             closeModal();
+            showMonths(); // Retour à l'accueil
         }
 
         function deleteModal() {
@@ -1718,14 +1724,20 @@
         function checkInfo(nom, prenom) {
             const fullName = (nom + ' ' + prenom).toLowerCase();
             
-            const avertissements = infractions.avertissements ? 
-                infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fullName && !a.archived) : [];
+            // Convertir en tableau si nécessaire
+            let avertList = [];
+            if (infractions.avertissements) {
+                avertList = Array.isArray(infractions.avertissements) ? infractions.avertissements : Object.values(infractions.avertissements);
+            }
             
-            const avertissementsArchives = infractions.avertissements ? 
-                infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fullName && a.archived) : [];
+            let bannisList = [];
+            if (infractions.bannis) {
+                bannisList = Array.isArray(infractions.bannis) ? infractions.bannis : Object.values(infractions.bannis);
+            }
             
-            const bannissement = infractions.bannis ? 
-                infractions.bannis.find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fullName) : null;
+            const avertissements = avertList.filter(a => a && a.nom && a.prenom && (a.nom + ' ' + a.prenom).toLowerCase() === fullName && !a.archived);
+            const avertissementsArchives = avertList.filter(a => a && a.nom && a.prenom && (a.nom + ' ' + a.prenom).toLowerCase() === fullName && a.archived);
+            const bannissement = bannisList.find(b => b && b.nom && b.prenom && (b.nom + ' ' + b.prenom).toLowerCase() === fullName);
             
             const isValid = isUserValid(nom, prenom);
             
@@ -1736,13 +1748,22 @@
             
             if (bannissement) {
                 html += `<p style="margin: 8px 0; color: #dc3545; font-weight: bold; font-size: 1.2em;">🚫 BANNI</p>`;
-                if (bannissement.motifs && bannissement.motifs.length > 0) {
+                
+                // Convertir motifs en tableau si nécessaire
+                let motifsArray = [];
+                if (bannissement.motifs) {
+                    motifsArray = Array.isArray(bannissement.motifs) ? bannissement.motifs : Object.values(bannissement.motifs);
+                }
+                
+                if (motifsArray.length > 0) {
                     html += `<div class="info-motifs" style="background: #f8d7da; border-color: #dc3545;">
                         <h4 style="color: #721c24;">Motifs du bannissement :</h4>`;
-                    bannissement.motifs.forEach((m, i) => {
+                    motifsArray.forEach((m, i) => {
+                        const motifText = typeof m === 'string' ? m : (m.motif || 'Non spécifié');
+                        const dateText = typeof m === 'object' && m.date ? m.date : '';
                         html += `<div class="info-motif-item" style="border-color: #f5c6cb;">
-                            <strong>#${i+1}</strong> - 📅 ${m.date || 'Date inconnue'}<br>
-                            📝 ${m.motif || 'Non spécifié'}
+                            <strong>#${i+1}</strong> ${dateText ? '- 📅 ' + dateText : ''}<br>
+                            📝 ${motifText}
                         </div>`;
                     });
                     html += `</div>`;
@@ -1751,7 +1772,15 @@
                         <h4 style="color: #721c24;">Motif du bannissement :</h4>
                         <div class="info-motif-item" style="border-color: #f5c6cb;">
                             📅 ${bannissement.date || 'Date inconnue'}<br>
-                            📝 ${bannissement.motif || 'Non spécifié'}
+                            📝 ${bannissement.motif}
+                        </div>
+                    </div>`;
+                } else {
+                    html += `<div class="info-motifs" style="background: #f8d7da; border-color: #dc3545;">
+                        <h4 style="color: #721c24;">Motif du bannissement :</h4>
+                        <div class="info-motif-item" style="border-color: #f5c6cb;">
+                            📅 ${bannissement.date || 'Date inconnue'}<br>
+                            📝 Motif non renseigné
                         </div>
                     </div>`;
                 }
@@ -1880,6 +1909,24 @@
             if (firebaseReady) {
                 document.getElementById('firebaseStatus').innerHTML = '✅ Firebase connecté';
                 document.getElementById('firebaseStatus').style.color = 'green';
+            }
+            
+            // Vérifier si déjà connecté (session persistante)
+            if (sessionStorage.getItem('logged') === 'true') {
+                // Attendre que Firebase soit prêt
+                const checkFirebase = setInterval(() => {
+                    if (firebaseReady) {
+                        clearInterval(checkFirebase);
+                        document.getElementById('loginPage').style.display = 'none';
+                        document.getElementById('mainApp').style.display = 'block';
+                        document.body.className = 'app-mode';
+                        setupFirebaseListeners();
+                        renderMonths();
+                        updateCounts();
+                        syncFromGoogleSheets(true);
+                        console.log("✅ Session restaurée");
+                    }
+                }, 100);
             }
         });
     </script>
