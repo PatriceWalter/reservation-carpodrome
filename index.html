@@ -1569,10 +1569,19 @@
                 return;
             }
             
+            const avert = infractions.avertissements[index];
+            // Archiver au lieu de supprimer
+            if (!infractions.archives) infractions.archives = [];
+            infractions.archives.push({
+                ...avert,
+                type: 'avertissement',
+                dateArchive: new Date().toLocaleDateString('fr-FR')
+            });
+            
             infractions.avertissements.splice(index, 1);
             saveInfractions();
             showInfractionList('avertissements');
-            showAlert("✅ Avertissement supprimé.");
+            showAlert("✅ Avertissement archivé.");
         }
 
         function removeBanni(index) {
@@ -1581,10 +1590,22 @@
                 return;
             }
             
+            if (!confirm('⚠️ Êtes-vous sûr de vouloir archiver ce bannissement ?')) return;
+            if (!confirm('🚨 DERNIÈRE CONFIRMATION : Cette action va archiver le bannissement. Confirmer ?')) return;
+            
+            const banni = infractions.bannis[index];
+            // Archiver au lieu de supprimer
+            if (!infractions.archives) infractions.archives = [];
+            infractions.archives.push({
+                ...banni,
+                type: 'bannissement',
+                dateArchive: new Date().toLocaleDateString('fr-FR')
+            });
+            
             infractions.bannis.splice(index, 1);
             saveInfractions();
             showInfractionList('bannis');
-            showAlert("✅ Bannissement supprimé.");
+            showAlert("✅ Bannissement archivé.");
         }
 
         function debannir(index) {
@@ -1594,6 +1615,15 @@
             }
             
             const banni = infractions.bannis[index];
+            
+            // Archiver le bannissement
+            if (!infractions.archives) infractions.archives = [];
+            infractions.archives.push({
+                ...banni,
+                type: 'bannissement',
+                dateArchive: new Date().toLocaleDateString('fr-FR'),
+                raison: 'Débannissement'
+            });
             
             if (banni.motifs && banni.motifs.length > 0) {
                 banni.motifs.forEach(m => {
