@@ -450,10 +450,21 @@
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
             const autoconnect = urlParams.get('autoconnect');
+            const fromControleur = urlParams.get('from') === 'controleur';
+            
             if (autoconnect === '911') {
                 document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('loginPass').value = '911';
                     setTimeout(function() { checkLogin(); }, 500);
+                    
+                    // Afficher bouton retour si on vient du contrôleur
+                    if (fromControleur) {
+                        const btn = document.createElement('button');
+                        btn.innerHTML = '← Retour Contrôleur';
+                        btn.style.cssText = 'position:fixed;top:15px;left:15px;z-index:9999;background:linear-gradient(135deg,#1a472a,#2d5a3d);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.3);';
+                        btn.onclick = function() { window.close(); };
+                        document.body.appendChild(btn);
+                    }
                 });
             }
         })();
