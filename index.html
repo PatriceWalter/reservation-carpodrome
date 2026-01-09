@@ -439,6 +439,26 @@
         </div>
     </div>
 
+    <!-- Modal sélection contrôleur -->
+    <div id="controleurModal" class="modal">
+        <div class="modal-content" style="max-width:350px;">
+            <div class="modal-header" style="background:#1565c0;"><h2>👮 Contrôle</h2></div>
+            <div class="modal-body">
+                <p style="margin-bottom:15px;font-weight:bold;">Sélectionnez le contrôleur :</p>
+                <select id="selectControleur" style="width:100%;padding:12px;font-size:16px;border:2px solid #ddd;border-radius:8px;margin-bottom:20px;">
+                    <option value="">-- Choisir --</option>
+                </select>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-save" onclick="confirmControleur()">✅ Valider</button>
+                    <button class="btn" onclick="closeControleurModal()" style="background:#eee;color:#333;">Annuler</button>
+                </div>
+                <div style="margin-top:15px;border-top:1px solid #ddd;padding-top:15px;">
+                    <button class="btn" onclick="annulerControle()" style="background:#dc3545;color:white;width:100%;">❌ Annuler le contrôle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -936,8 +956,9 @@
         let reservations = {};
         let infractions = { avertissements: [], bannis: [] };
         let validUsers = [];
+        let controleurs = [];
         
-        let curM, curMName, curDKey, curP, curFullDate, pendingSanctionType;
+        let curM, curMName, curDKey, curP, curFullDate, pendingSanctionType, pendingControlePoste;
 
         // =============================================
         // FIREBASE - LISTENERS EN TEMPS RÉEL
@@ -980,6 +1001,13 @@
                 if (!document.getElementById('postesPage').classList.contains('hidden')) {
                     renderPostes();
                 }
+            });
+
+            database.ref('controleurs').on('value', (snapshot) => {
+                const data = snapshot.val();
+                controleurs = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+                console.log("📥 Contrôleurs mis à jour:", controleurs);
+                updateControleurSelect();
             });
         }
 
@@ -1292,7 +1320,10 @@
             
             html += '</div>';
             
-            const labelText = data.controlled ? `Contrôlé à ${data.heure || ''}` : 'Cliquer pour valider le contrôle';
+            let labelText = 'Cliquer pour contrôler';
+            if (data.controlled) {
+                labelText = data.controleur ? `✅ par ${data.controleur}` : `✅ à ${data.heure || ''}`;
+            }
             const labelClass = data.controlled ? 'control-label checked' : 'control-label';
             html += `<div class="control-zone">
                 <input type="checkbox" id="check_${n}" ${data.controlled ? 'checked' : ''} 
@@ -1314,18 +1345,50 @@
             if (!reservations[curDKey]) reservations[curDKey] = {};
             if (!reservations[curDKey][n]) return;
             
+            pendingControlePoste = n;
             const poste = reservations[curDKey][n];
-            poste.controlled = !poste.controlled;
+            document.getElementById('selectControleur').value = poste.controleur || '';
+            document.getElementById('controleurModal').style.display = 'block';
+        }
+
+        function updateControleurSelect() {
+            const select = document.getElementById('selectControleur');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Choisir --</option>' + controleurs.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function closeControleurModal() {
+            document.getElementById('controleurModal').style.display = 'none';
+            pendingControlePoste = null;
+            renderPostes();
+        }
+
+        function confirmControleur() {
+            const controleur = document.getElementById('selectControleur').value;
+            if (!controleur) { alert('Veuillez sélectionner un contrôleur'); return; }
             
-            if (poste.controlled) {
+            if (!reservations[curDKey]) reservations[curDKey] = {};
+            const poste = reservations[curDKey][pendingControlePoste];
+            if (poste) {
+                poste.controlled = true;
+                poste.controleur = controleur;
                 const now = new Date();
                 poste.heure = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            } else {
-                poste.heure = "";
+                saveReservations();
             }
-            
-            saveReservations();
-            renderPostes();
+            closeControleurModal();
+        }
+
+        function annulerControle() {
+            if (!reservations[curDKey]) return;
+            const poste = reservations[curDKey][pendingControlePoste];
+            if (poste) {
+                poste.controlled = false;
+                poste.controleur = '';
+                poste.heure = '';
+                saveReservations();
+            }
+            closeControleurModal();
         }
 
         // =============================================
