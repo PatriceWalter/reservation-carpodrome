@@ -1320,16 +1320,17 @@
             
             html += '</div>';
             
-            let labelText = 'Cliquer pour contrôler';
             if (data.controlled) {
-                labelText = data.controleur ? `✅ par ${data.controleur}` : `✅ à ${data.heure || ''}`;
+                const controleurNom = data.controleur || 'inconnu';
+                html += `<div class="control-zone" onclick="event.stopPropagation(); toggleControle(${n})" style="cursor:pointer;">
+                    <span class="control-label checked">✅ Contrôlé par ${controleurNom}</span>
+                </div>`;
+            } else {
+                html += `<div class="control-zone">
+                    <input type="checkbox" id="check_${n}" onclick="event.stopPropagation(); toggleControle(${n})">
+                    <label for="check_${n}" class="control-label" onclick="event.stopPropagation();">Cliquer pour contrôler</label>
+                </div>`;
             }
-            const labelClass = data.controlled ? 'control-label checked' : 'control-label';
-            html += `<div class="control-zone">
-                <input type="checkbox" id="check_${n}" ${data.controlled ? 'checked' : ''} 
-                    onclick="event.stopPropagation(); toggleControle(${n})">
-                <label for="check_${n}" class="${labelClass}" onclick="event.stopPropagation();">${labelText}</label>
-            </div>`;
             
             div.innerHTML = html;
             return div;
