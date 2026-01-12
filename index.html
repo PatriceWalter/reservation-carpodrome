@@ -17,7 +17,8 @@
         #mainApp { display: none; max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); overflow: hidden; }
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; position: relative; }
         .header h1 { font-size: 1.5em; }
-        .admin-gear { position: absolute; top: 15px; right: 20px; font-size: 1.5em; cursor: pointer; }
+        .admin-gear { position: absolute; top: 15px; right: 20px; font-size: 1.5em; cursor: pointer; transition: 0.3s; }
+        .admin-gear:hover { transform: rotate(90deg); }
         .sync-status { position: absolute; top: 15px; left: 20px; font-size: 0.8em; padding: 5px 10px; border-radius: 20px; background: rgba(255,255,255,0.2); }
         .sync-status.online { background: #28a745; }
         .sync-status.offline { background: #dc3545; }
@@ -33,13 +34,17 @@
         .months-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
         .month-card { background: white; border: 3px solid #e9ecef; border-radius: 10px; padding: 25px 15px; text-align: center; cursor: pointer; transition: 0.3s; }
         .month-card:hover { border-color: #667eea; transform: translateY(-5px); }
+        .month-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .month-card.disabled:hover { transform: none; border-color: #e9ecef; }
         .month-name { font-size: 1.3em; font-weight: bold; color: #667eea; }
         .days-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
         .day-card { background: white; border: 2px solid #e9ecef; border-radius: 10px; padding: 15px; text-align: center; cursor: pointer; min-height: 90px; display: flex; flex-direction: column; justify-content: center; }
+        .day-card:hover { border-color: #667eea; transform: translateY(-3px); }
         .day-number { font-size: 1em; font-weight: bold; color: #667eea; text-transform: capitalize; }
         .closed-morning { color: #dc3545; font-size: 0.8em; margin-top: 8px; font-weight: bold; }
         .postes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
         .poste-box { background: #f8f9fa; border: 3px solid #dee2e6; border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+        .poste-box:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .poste-box.libre { border-color: #28a745; background: #e8f5e9; }
         .poste-box.reserve { border-color: #ffc107; background: #fff9e6; }
         .poste-box.controle { border-color: #17a2b8; background: #e7f6f8; }
@@ -59,15 +64,19 @@
         .stat-label { font-size: 0.9em; }
         .modal, .alert-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); overflow-y: auto; padding: 20px; }
         .modal-content, .alert-content { background: white; margin: 20px auto; border-radius: 15px; width: 100%; max-width: 500px; overflow: hidden; }
+        .modal-content.large { max-width: 700px; }
         .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
         .modal-body { padding: 20px; }
         .modal-body label { font-weight: bold; color: #333; display: block; margin-top: 12px; margin-bottom: 5px; }
-        input[type="text"], input[type="password"], select { width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; }
+        input[type="text"], input[type="password"], select { width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; outline: none; }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: #667eea; }
         .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; flex: 1; font-size: 1em; }
+        .btn:hover { opacity: 0.9; }
         .btn-save { background: #28a745; color: white; }
         .btn-delete { background: #dc3545; color: white; }
         .btn-unban { background: #17a2b8; color: white; }
         .btn-back { background: #6c757d; color: white; margin-bottom: 15px; display: inline-block; padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold; }
+        .btn-calendar { background: #9b59b6; color: white; }
         .infraction-item { padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid; }
         .infraction-item.avertissement { border-left-color: #ffc107; }
         .infraction-item.banni { border-left-color: #dc3545; }
@@ -84,7 +93,34 @@
         .info-motifs h4 { margin-bottom: 8px; color: #856404; }
         .info-motif-item { padding: 5px 0; border-bottom: 1px solid #ffeeba; font-size: 0.9em; }
         .info-motif-item:last-child { border-bottom: none; }
-        @media (max-width: 480px) { .header h1 { font-size: 1em; } .months-grid, .postes-grid { grid-template-columns: repeat(2, 1fr); } .modal-content { margin: 5px; } }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .calendar-header { background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold; font-size: 0.8em; border-radius: 5px; }
+        .calendar-day { padding: 10px 5px; text-align: center; border: 2px solid #e9ecef; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .calendar-day:hover { border-color: #667eea; }
+        .calendar-day.empty { background: #f8f9fa; cursor: default; border: none; }
+        .calendar-day.selected { background: #28a745; color: white; border-color: #28a745; }
+        .calendar-day.morning-closed { background: #fff3cd; border-color: #ffc107; }
+        .calendar-day.morning-closed.selected { background: linear-gradient(135deg, #28a745 50%, #ffc107 50%); }
+        .calendar-day .morning-icon { font-size: 0.7em; margin-top: 2px; }
+        .months-checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
+        .month-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 10px; background: #f8f9fa; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .month-checkbox-item:hover { background: #e9ecef; }
+        .month-checkbox-item input { width: 20px; height: 20px; cursor: pointer; }
+        .month-checkbox-item.active { background: #d4edda; border: 2px solid #28a745; }
+        .year-selector { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        .year-selector button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1.2em; font-weight: bold; }
+        .year-selector button:hover { background: #5a6fd6; }
+        .year-selector span { font-size: 2em; font-weight: bold; color: #667eea; }
+        .calendar-legend { display: flex; gap: 20px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.85em; }
+        .legend-box { width: 20px; height: 20px; border-radius: 4px; border: 2px solid; }
+        .legend-box.open { background: #28a745; border-color: #28a745; }
+        .legend-box.closed { background: #f8f9fa; border-color: #e9ecef; }
+        .legend-box.morning { background: #fff3cd; border-color: #ffc107; }
+        .admin-section { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        .admin-section h3 { color: #667eea; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        @media (max-width: 768px) { .calendar-grid { gap: 3px; } .calendar-day { padding: 8px 3px; font-size: 0.9em; min-height: 40px; } .months-checkbox-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .header h1 { font-size: 1em; } .months-grid, .postes-grid { grid-template-columns: repeat(2, 1fr); } .modal-content { margin: 5px; } .calendar-day { padding: 6px 2px; font-size: 0.8em; } }
     </style>
 </head>
 <body class="login-mode">
@@ -100,7 +136,7 @@
         <div class="header">
             <span class="sync-status" id="syncStatus">🔄 Connexion...</span>
             <span class="admin-gear" onclick="openAdmin()">⚙️</span>
-            <h1>🎣 Réservation Carpodrome 2026</h1>
+            <h1 id="mainTitle">🎣 Réservation Carpodrome 2026</h1>
         </div>
         <div class="breadcrumb">
             <div class="nav-left">
@@ -174,17 +210,55 @@
         </div>
     </div>
     <div id="adminModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content large">
             <div class="modal-header"><h2>⚙️ Administration</h2></div>
             <div class="modal-body">
-                <div style="border-top: 2px solid #eee; padding-top: 15px;">
-                    <h3 style="color: #667eea; margin-bottom: 15px;">🪪 Liste Pêcheurs Valides</h3>
+                <div class="admin-section">
+                    <h3>📅 Gestion du Calendrier</h3>
+                    <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Configurer l'année, les mois actifs et les jours d'ouverture</p>
+                    <button class="btn btn-calendar" onclick="openCalendarManager()" style="width:100%;">📅 Ouvrir le Gestionnaire de Calendrier</button>
+                </div>
+                <div class="admin-section">
+                    <h3>🪪 Liste Pêcheurs Valides</h3>
                     <label>NOM</label><input type="text" id="adminAddNom" placeholder="NOM">
                     <label>Prénom</label><input type="text" id="adminAddPrenom" placeholder="Prénom">
                     <button class="btn btn-save" style="width:100%; margin: 15px 0;" onclick="addValidUser()">➕ Ajouter à la liste</button>
-                    <div id="adminValidList" style="max-height:200px; overflow-y:auto; border-top:1px solid #eee; padding-top:10px;"></div>
+                    <div id="adminValidList" style="max-height:150px; overflow-y:auto; border-top:1px solid #eee; padding-top:10px;"></div>
                 </div>
                 <button class="btn" style="width:100%; background:#eee; color:#333; margin-top:15px;" onclick="closeAdmin()">Fermer</button>
+            </div>
+        </div>
+    </div>
+    <div id="calendarModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);"><h2>📅 Gestionnaire de Calendrier</h2></div>
+            <div class="modal-body">
+                <div class="year-selector">
+                    <button onclick="changeYear(-1)">◀</button>
+                    <span id="calendarYear">2026</span>
+                    <button onclick="changeYear(1)">▶</button>
+                </div>
+                <h3 style="margin-bottom:10px; color:#667eea;">📆 Mois actifs</h3>
+                <div class="months-checkbox-grid" id="monthsCheckboxGrid"></div>
+                <h3 style="margin: 20px 0 10px; color:#667eea;">📋 Configurer les jours d'ouverture</h3>
+                <select id="selectMonthConfig" style="margin-bottom:15px;" onchange="loadMonthCalendar()">
+                    <option value="">-- Sélectionner un mois --</option>
+                </select>
+                <div id="monthCalendarZone" style="display:none;">
+                    <div class="calendar-legend">
+                        <div class="legend-item"><div class="legend-box closed"></div> Fermé</div>
+                        <div class="legend-item"><div class="legend-box open"></div> Ouvert</div>
+                        <div class="legend-item"><div class="legend-box morning"></div> Fermé le matin</div>
+                    </div>
+                    <p style="text-align:center; font-size:0.85em; color:#666; margin-bottom:10px;">
+                        <strong>Clic simple</strong> = Ouvrir/Fermer | <strong>Double-clic</strong> = Fermé le matin
+                    </p>
+                    <div class="calendar-grid" id="monthCalendarGrid"></div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:25px;">
+                    <button class="btn btn-save" onclick="saveCalendarConfig()">💾 Enregistrer</button>
+                    <button class="btn" onclick="closeCalendarManager()" style="background:#eee; color:#333;">Fermer</button>
+                </div>
             </div>
         </div>
     </div>
@@ -235,33 +309,43 @@
         const firebaseConfig = { apiKey: "AIzaSyBhkDGebCSuqjcENl8dZI0ZeSAkjHUUsuY", authDomain: "reservation-carpodrome.firebaseapp.com", databaseURL: "https://reservation-carpodrome-default-rtdb.europe-west1.firebasedatabase.app", projectId: "reservation-carpodrome", storageBucket: "reservation-carpodrome.firebasestorage.app", messagingSenderId: "112186411680", appId: "1:112186411680:web:13bc4892163e47a04317c5" };
         let app, database, firebaseReady = false;
         try { app = firebase.initializeApp(firebaseConfig); database = firebase.database(); firebaseReady = true; } catch (e) { console.error("Firebase:", e); }
-        const JOURS_OUVERTURE = { 2: [1, 7, 8, 14, 15, 21, 22, 28, 29], 3: [11, 12, 18, 19, 25, 26], 4: [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 5: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 6: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 7: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 8: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 9: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] };
-        const FERME_MATIN = { 2: [28], 3: [25], 5: [13], 8: [19], 9: [17] };
+        const DEFAULT_JOURS_OUVERTURE = { 2: [1, 7, 8, 14, 15, 21, 22, 28, 29], 3: [11, 12, 18, 19, 25, 26], 4: [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 5: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 6: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 7: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 8: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 9: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] };
+        const DEFAULT_FERME_MATIN = { 2: [28], 3: [25], 5: [13], 8: [19], 9: [17] };
         const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
         let reservations = {}, infractions = { avertissements: [], bannis: [] }, validUsers = [], controleurs = [];
+        let calendrierConfig = { annee: 2026, joursOuverture: {}, fermeMatin: {} };
         let pendingControlePoste = null, curM, curMName, curDKey, curP, curFullDate, pendingSanctionType;
-        
-        function setupFirebaseListeners() { 
-            if (!firebaseReady) return; 
-            database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); 
-            database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
-            database.ref('infractions').on('value', (snap) => { infractions = snap.val() || { avertissements: [], bannis: [] }; if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; updateCounts(); }); 
-            database.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
-            database.ref('controleurs').on('value', (snap) => { controleurs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : []; updateControleurSelect(); updateMotifControleurSelect(); }); 
-        }
+        let tempCalendarConfig = {};
+        function setupFirebaseListeners() { if (!firebaseReady) return; database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); database.ref('infractions').on('value', (snap) => { infractions = snap.val() || { avertissements: [], bannis: [] }; if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; updateCounts(); }); database.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); database.ref('controleurs').on('value', (snap) => { controleurs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : []; updateControleurSelect(); updateMotifControleurSelect(); }); database.ref('calendrierConfig').on('value', (snapshot) => { const data = snapshot.val(); if (data) { calendrierConfig = data; } else { calendrierConfig = { annee: 2026, joursOuverture: DEFAULT_JOURS_OUVERTURE, fermeMatin: DEFAULT_FERME_MATIN }; saveCalendrierConfig(); } updateMainTitle(); renderMonths(); }); }
         function saveReservations() { if (firebaseReady) database.ref('reservations').set(reservations); }
         function saveInfractions() { if (firebaseReady) database.ref('infractions').set(infractions); }
         function saveValidUsers() { if (firebaseReady) { const o = {}; validUsers.forEach((u, i) => o['user_' + i] = u); database.ref('validUsers').set(o); } }
+        function saveCalendrierConfig() { if (firebaseReady) database.ref('calendrierConfig').set(calendrierConfig); }
+        function getJoursOuverture() { return calendrierConfig.joursOuverture || DEFAULT_JOURS_OUVERTURE; }
+        function getFermeMatin() { return calendrierConfig.fermeMatin || DEFAULT_FERME_MATIN; }
+        function getAnnee() { return calendrierConfig.annee || 2026; }
+        function updateMainTitle() { document.getElementById('mainTitle').textContent = `🎣 Réservation Carpodrome ${getAnnee()}`; }
+        function openCalendarManager() { closeAdmin(); tempCalendarConfig = JSON.parse(JSON.stringify(calendrierConfig)); document.getElementById('calendarYear').textContent = tempCalendarConfig.annee; renderMonthsCheckboxes(); updateMonthSelect(); document.getElementById('monthCalendarZone').style.display = 'none'; document.getElementById('selectMonthConfig').value = ''; document.getElementById('calendarModal').style.display = 'block'; }
+        function closeCalendarManager() { document.getElementById('calendarModal').style.display = 'none'; }
+        function changeYear(delta) { tempCalendarConfig.annee += delta; if (tempCalendarConfig.annee < 2024) tempCalendarConfig.annee = 2024; if (tempCalendarConfig.annee > 2050) tempCalendarConfig.annee = 2050; document.getElementById('calendarYear').textContent = tempCalendarConfig.annee; }
+        function renderMonthsCheckboxes() { const container = document.getElementById('monthsCheckboxGrid'); const joursOuverture = tempCalendarConfig.joursOuverture || {}; container.innerHTML = MOIS_NOMS.map((nom, i) => { const moisNum = i + 1; const isActive = joursOuverture[moisNum] && joursOuverture[moisNum].length > 0; return `<div class="month-checkbox-item ${isActive ? 'active' : ''}" onclick="toggleMonth(${moisNum})"><input type="checkbox" ${isActive ? 'checked' : ''} onclick="event.stopPropagation(); toggleMonth(${moisNum})"><span>${nom}</span></div>`; }).join(''); }
+        function toggleMonth(mois) { if (!tempCalendarConfig.joursOuverture) tempCalendarConfig.joursOuverture = {}; if (tempCalendarConfig.joursOuverture[mois] && tempCalendarConfig.joursOuverture[mois].length > 0) { tempCalendarConfig.joursOuverture[mois] = []; if (tempCalendarConfig.fermeMatin) tempCalendarConfig.fermeMatin[mois] = []; } else { const jours = []; const annee = tempCalendarConfig.annee; const nbJours = new Date(annee, mois, 0).getDate(); for (let j = 1; j <= nbJours; j++) { const date = new Date(annee, mois - 1, j); if (date.getDay() === 0 || date.getDay() === 6) jours.push(j); } tempCalendarConfig.joursOuverture[mois] = jours; } renderMonthsCheckboxes(); updateMonthSelect(); }
+        function updateMonthSelect() { const select = document.getElementById('selectMonthConfig'); const joursOuverture = tempCalendarConfig.joursOuverture || {}; select.innerHTML = '<option value="">-- Sélectionner un mois --</option>' + MOIS_NOMS.map((nom, i) => { const moisNum = i + 1; const isActive = joursOuverture[moisNum] && joursOuverture[moisNum].length > 0; return `<option value="${moisNum}" ${!isActive ? 'disabled' : ''}>${nom} ${!isActive ? '(inactif)' : ''}</option>`; }).join(''); }
+        function loadMonthCalendar() { const mois = parseInt(document.getElementById('selectMonthConfig').value); if (!mois) { document.getElementById('monthCalendarZone').style.display = 'none'; return; } document.getElementById('monthCalendarZone').style.display = 'block'; renderMonthCalendar(mois); }
+        function renderMonthCalendar(mois) { const grid = document.getElementById('monthCalendarGrid'); const annee = tempCalendarConfig.annee; const joursOuverture = tempCalendarConfig.joursOuverture[mois] || []; const fermeMatin = (tempCalendarConfig.fermeMatin && tempCalendarConfig.fermeMatin[mois]) || []; const joursNoms = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']; let html = joursNoms.map(j => `<div class="calendar-header">${j}</div>`).join(''); const premierJour = new Date(annee, mois - 1, 1); let jourSemaine = premierJour.getDay(); jourSemaine = jourSemaine === 0 ? 6 : jourSemaine - 1; for (let i = 0; i < jourSemaine; i++) html += '<div class="calendar-day empty"></div>'; const nbJours = new Date(annee, mois, 0).getDate(); for (let j = 1; j <= nbJours; j++) { const isOpen = joursOuverture.includes(j); const isMorningClosed = fermeMatin.includes(j); let classes = 'calendar-day'; if (isOpen) classes += ' selected'; if (isMorningClosed) classes += ' morning-closed'; html += `<div class="${classes}" onclick="toggleDay(${mois}, ${j})" ondblclick="toggleMorning(${mois}, ${j})">${j}${isMorningClosed ? '<span class="morning-icon">🌅</span>' : ''}</div>`; } grid.innerHTML = html; }
+        function toggleDay(mois, jour) { if (!tempCalendarConfig.joursOuverture[mois]) tempCalendarConfig.joursOuverture[mois] = []; const index = tempCalendarConfig.joursOuverture[mois].indexOf(jour); if (index > -1) { tempCalendarConfig.joursOuverture[mois].splice(index, 1); if (tempCalendarConfig.fermeMatin && tempCalendarConfig.fermeMatin[mois]) { const mIdx = tempCalendarConfig.fermeMatin[mois].indexOf(jour); if (mIdx > -1) tempCalendarConfig.fermeMatin[mois].splice(mIdx, 1); } } else { tempCalendarConfig.joursOuverture[mois].push(jour); tempCalendarConfig.joursOuverture[mois].sort((a, b) => a - b); } renderMonthCalendar(mois); renderMonthsCheckboxes(); }
+        function toggleMorning(mois, jour) { if (!tempCalendarConfig.joursOuverture[mois] || !tempCalendarConfig.joursOuverture[mois].includes(jour)) return; if (!tempCalendarConfig.fermeMatin) tempCalendarConfig.fermeMatin = {}; if (!tempCalendarConfig.fermeMatin[mois]) tempCalendarConfig.fermeMatin[mois] = []; const index = tempCalendarConfig.fermeMatin[mois].indexOf(jour); if (index > -1) tempCalendarConfig.fermeMatin[mois].splice(index, 1); else { tempCalendarConfig.fermeMatin[mois].push(jour); tempCalendarConfig.fermeMatin[mois].sort((a, b) => a - b); } renderMonthCalendar(mois); }
+        function saveCalendarConfig() { calendrierConfig = JSON.parse(JSON.stringify(tempCalendarConfig)); saveCalendrierConfig(); closeCalendarManager(); showAlert('✅ Calendrier enregistré !'); renderMonths(); updateMainTitle(); }
         function checkLogin() { if (document.getElementById('loginPass').value === "911") { if (!firebaseReady) { showAlert("⚠️ Connexion..."); return; } document.getElementById('loginPage').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.body.className = 'app-mode'; sessionStorage.setItem('logged', 'true'); setupFirebaseListeners(); renderMonths(); updateCounts(); } else { document.getElementById('errorLogin').style.display = 'block'; setTimeout(() => document.getElementById('errorLogin').style.display = 'none', 3000); } }
         document.getElementById("loginPass").addEventListener("keyup", (e) => { if (e.key === "Enter") checkLogin(); });
         function logout() { sessionStorage.removeItem('logged'); location.reload(); }
-        function accesControleur() { const t = new Date(); if (t.getFullYear() !== 2026) { showAlert("📅 Application pour 2026"); return; } const j = t.getDate(), m = t.getMonth(); if (!(JOURS_OUVERTURE[m] || []).includes(j)) { showAlert("🚫 Étang fermé"); return; } curM = m; curMName = MOIS_NOMS[m]; showPostes(j, `2026-${String(m+1).padStart(2,'0')}-${String(j).padStart(2,'0')}`, t.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); }
+        function accesControleur() { const t = new Date(); const annee = t.getFullYear(); const configAnnee = getAnnee(); if (annee !== configAnnee) { showAlert(`📅 Application configurée pour ${configAnnee}`); return; } const j = t.getDate(), m = t.getMonth(); const joursOuverts = getJoursOuverture()[m + 1] || []; if (!joursOuverts.includes(j)) { showAlert("🚫 Étang fermé aujourd'hui"); return; } curM = m; curMName = MOIS_NOMS[m]; showPostes(j, `${annee}-${String(m+1).padStart(2,'0')}-${String(j).padStart(2,'0')}`, t.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); }
         function checkAdminPassword() { return prompt("🔐 Mot de passe admin :") === "admin"; }
         function hideAll() { ['monthsPage', 'daysPage', 'postesPage', 'infractionsMenuPage', 'infractionsDetailPage'].forEach(id => document.getElementById(id).classList.add('hidden')); }
-        function renderMonths() { document.getElementById('monthsGrid').innerHTML = MOIS_NOMS.map((m, i) => (JOURS_OUVERTURE[i] && JOURS_OUVERTURE[i].length > 0) ? `<div class="month-card" onclick="showDays(${i}, '${m}')"><div class="month-name">${m}</div></div>` : '').join(''); }
+        function renderMonths() { const joursOuverture = getJoursOuverture(); document.getElementById('monthsGrid').innerHTML = MOIS_NOMS.map((m, i) => { const moisNum = i + 1; const jours = joursOuverture[moisNum] || []; const isDisabled = jours.length === 0; if (isDisabled) return `<div class="month-card disabled"><div class="month-name" style="color:#999;">${m}</div><small style="color:#999;">Fermé</small></div>`; return `<div class="month-card" onclick="showDays(${i}, '${m}')"><div class="month-name">${m}</div></div>`; }).join(''); }
         function showMonths() { hideAll(); document.getElementById('monthsPage').classList.remove('hidden'); }
-        function showDays(m, name) { curM = m; curMName = name; hideAll(); document.getElementById('daysPage').classList.remove('hidden'); document.getElementById('monthTitle').textContent = name + ' 2026'; const jours = JOURS_OUVERTURE[m] || []; document.getElementById('daysGrid').innerHTML = jours.map(j => { const d = new Date(2026, m, j); const df = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); const k = `2026-${String(m+1).padStart(2,'0')}-${String(j).padStart(2,'0')}`; const dr = reservations[k] || {}; let pr = 0; for (let i = 1; i <= 14; i++) if (dr[i] && dr[i].nom) pr++; const pl = 14 - pr; return `<div class="day-card" onclick="showPostes(${j}, '${k}', '${df}')"><div style="color: ${pl === 0 ? '#dc3545' : '#28a745'};">${pl === 0 ? 'COMPLET' : pl + ' libre(s)'}</div><div class="day-number">${df}</div>${(FERME_MATIN[m] || []).includes(j) ? '<div class="closed-morning">⚠️ FERMÉ LE MATIN</div>' : ''}</div>`; }).join(''); }
-        function showPostes(j, key, dateFull) { curDKey = key; curFullDate = dateFull; hideAll(); document.getElementById('postesPage').classList.remove('hidden'); document.getElementById('postePageTitle').textContent = dateFull + " 2026"; renderPostes(); }
+        function showDays(m, name) { curM = m; curMName = name; hideAll(); document.getElementById('daysPage').classList.remove('hidden'); document.getElementById('monthTitle').textContent = name + ' ' + getAnnee(); const moisNum = m + 1; const jours = getJoursOuverture()[moisNum] || []; const fermeMatin = getFermeMatin()[moisNum] || []; const annee = getAnnee(); document.getElementById('daysGrid').innerHTML = jours.map(j => { const d = new Date(annee, m, j); const df = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); const k = `${annee}-${String(moisNum).padStart(2,'0')}-${String(j).padStart(2,'0')}`; const dr = reservations[k] || {}; let pr = 0; for (let i = 1; i <= 14; i++) if (dr[i] && dr[i].nom) pr++; const pl = 14 - pr; const isFermeMatin = fermeMatin.includes(j); return `<div class="day-card" onclick="showPostes(${j}, '${k}', '${df}')"><div style="color: ${pl === 0 ? '#dc3545' : '#28a745'};">${pl === 0 ? 'COMPLET' : pl + ' libre(s)'}</div><div class="day-number">${df}</div>${isFermeMatin ? '<div class="closed-morning">⚠️ FERMÉ LE MATIN</div>' : ''}</div>`; }).join(''); }
+        function showPostes(j, key, dateFull) { curDKey = key; curFullDate = dateFull; hideAll(); document.getElementById('postesPage').classList.remove('hidden'); document.getElementById('postePageTitle').textContent = dateFull + " " + getAnnee(); renderPostes(); }
         function backToDays() { showDays(curM, curMName); }
         function renderPostes() { const g = document.getElementById('postesGrid'); g.innerHTML = ''; if (!reservations[curDKey]) reservations[curDKey] = {}; let l = 0, r = 0, c = 0; for (let i = 1; i <= 14; i++) { const d = reservations[curDKey][i] || {}; if (d.nom) { r++; if (d.controlled) c++; } else l++; g.appendChild(createBox(i, d)); } document.getElementById('statLibre').textContent = l; document.getElementById('statReserve').textContent = r; document.getElementById('statControle').textContent = c; }
         function createBox(n, data) { const div = document.createElement('div'); const hasName = data.nom && data.nom.trim(); let cn = 'poste-box '; if (data.controlled) cn += 'controle'; else if (hasName) cn += 'reserve'; else cn += 'libre'; div.className = cn; div.onclick = (e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') openModal(n, data); }; let h = '<div class="poste-content">'; h += `<div class="poste-title">Poste ${n}</div>`; if (data.controlled && data.heure) h += `<div class="poste-heure">🕒 ${data.heure}</div>`; if (hasName) { h += `<div class="poste-nom">${data.nom.toUpperCase()} ${data.prenom || ''}</div>`; if (data.binome && data.modeReservation === "Américaine") h += `<div class="poste-nom" style="color:#667eea;">${data.binome}</div>`; h += data.modeReservation === "Américaine" ? '<div style="font-size:0.8em;color:#e53e3e;font-weight:bold;">👥 Américaine</div>' : '<div style="font-size:0.8em;color:#38a169;">👤 Individuel</div>'; if (data.creneau) h += `<div style="font-size:0.8em;color:#666;">📅 ${data.creneau}</div>`; if (isUserValid(data.nom, data.prenom)) h += '<div class="badge-peche">🪪 Carte valide</div>'; h += `<button class="btn-info" onclick="event.stopPropagation(); checkInfo('${escapeHtml(data.nom)}', '${escapeHtml(data.prenom || '')}')">ℹ️ Info</button>`; } h += '</div>'; if (data.controlled) h += `<div class="control-zone" onclick="event.stopPropagation();toggleControle(${n})" style="cursor:pointer;"><span class="control-label checked">✅ Contrôlé par ${data.controleur || 'inconnu'}</span></div>`; else h += `<div class="control-zone"><input type="checkbox" onclick="event.stopPropagation();toggleControle(${n})"><label class="control-label">Contrôler</label></div>`; div.innerHTML = h; return div; }
@@ -273,7 +357,7 @@
         function confirmControleur() { const c = document.getElementById('selectControleur').value; if (!c) { alert('Choisir un contrôleur'); return; } const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = true; p.controleur = c; const n = new Date(); p.heure = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); saveReservations(); } closeControleurModal(); }
         function annulerControle() { const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = false; p.controleur = ''; p.heure = ''; saveReservations(); } closeControleurModal(); }
         function toggleBinomeField() { document.getElementById('binomeZone').style.display = document.getElementById('modalMode').value === 'Américaine' ? 'block' : 'none'; }
-        function openModal(n, data) { curP = n; document.getElementById('modalTitle').textContent = 'Poste ' + n; document.getElementById('modalDate').textContent = curFullDate + " 2026"; document.getElementById('modalNom').value = data.nom || ''; document.getElementById('modalPrenom').value = data.prenom || ''; document.getElementById('modalControle').checked = data.controlled || false; document.getElementById('modalHeure').value = data.heure || ''; document.getElementById('modalCreneau').value = data.creneau || ''; document.getElementById('modalMode').value = data.modeReservation || 'Individuel'; document.getElementById('modalBinome').value = data.binome || ''; toggleBinomeField(); updateControlText(); checkCardBadge(); document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none'; document.getElementById('posteModal').style.display = 'block'; }
+        function openModal(n, data) { curP = n; document.getElementById('modalTitle').textContent = 'Poste ' + n; document.getElementById('modalDate').textContent = curFullDate + " " + getAnnee(); document.getElementById('modalNom').value = data.nom || ''; document.getElementById('modalPrenom').value = data.prenom || ''; document.getElementById('modalControle').checked = data.controlled || false; document.getElementById('modalHeure').value = data.heure || ''; document.getElementById('modalCreneau').value = data.creneau || ''; document.getElementById('modalMode').value = data.modeReservation || 'Individuel'; document.getElementById('modalBinome').value = data.binome || ''; toggleBinomeField(); updateControlText(); checkCardBadge(); document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none'; document.getElementById('posteModal').style.display = 'block'; }
         function closeModal() { document.getElementById('posteModal').style.display = 'none'; }
         function saveModal() { let nom = document.getElementById('modalNom').value.trim().toUpperCase(); let prenom = document.getElementById('modalPrenom').value.trim(); if (!nom || !prenom) { closeModal(); return; } prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const banni = (infractions.bannis || []).find(b => b.nom && b.nom.toUpperCase() === nom && b.prenom && b.prenom.toLowerCase() === prenom.toLowerCase()); if (banni) { showAlert(`🚫 ${nom} ${prenom} est BANNI !`); return; } if (!reservations[curDKey]) reservations[curDKey] = {}; reservations[curDKey][curP] = { nom, prenom, controlled: document.getElementById('modalControle').checked, heure: document.getElementById('modalHeure').value, creneau: document.getElementById('modalCreneau').value, modeReservation: document.getElementById('modalMode').value, binome: document.getElementById('modalMode').value === 'Américaine' ? document.getElementById('modalBinome').value.trim() : '' }; saveReservations(); renderPostes(); closeModal(); showMonths(); }
         function deleteModal() { if (reservations[curDKey] && reservations[curDKey][curP]) { delete reservations[curDKey][curP]; saveReservations(); renderPostes(); } closeModal(); }
@@ -288,60 +372,8 @@
         function debannir(i) { if (!checkAdminPassword()) return; const b = infractions.bannis[i]; if (b.motifs && b.motifs.length) { b.motifs.forEach(m => infractions.avertissements.push({ id: Date.now() + '' + Math.random(), nom: b.nom, prenom: b.prenom, motif: m.motif, date: m.date, controleurSanction: m.controleurSanction, archived: true })); } infractions.bannis.splice(i, 1); saveInfractions(); showInfractionList('bannis'); showAlert(`✅ ${b.nom} ${b.prenom} débanni.`); }
         function askMotif(type) { pendingSanctionType = type; document.getElementById('motifHeader').style.background = type === 'bannis' ? '#dc3545' : '#ffc107'; document.getElementById('motifInput').value = ''; document.getElementById('motifControleur').value = ''; updateMotifControleurSelect(); document.getElementById('motifModal').style.display = 'block'; }
         function closeMotif() { document.getElementById('motifModal').style.display = 'none'; }
-        function confirmSanction() { 
-            const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
-            const prenom = document.getElementById('modalPrenom').value.trim(); 
-            const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
-            const motif = document.getElementById('motifInput').value || "Non spécifié"; 
-            const controleurSanction = document.getElementById('motifControleur').value || "Non spécifié";
-            const dateNow = new Date().toLocaleString('fr-FR'); 
-            if (!infractions.avertissements) infractions.avertissements = []; 
-            if (!infractions.bannis) infractions.bannis = []; 
-            if (pendingSanctionType === 'avertissements') { 
-                infractions.avertissements.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); 
-                const fn = (nom + ' ' + prenomF).toLowerCase(); 
-                const ua = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
-                if (ua.length >= 3) { 
-                    const motifs = ua.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); 
-                    infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motifs, controleurSanction, date: dateNow }); 
-                    infractions.avertissements = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived); 
-                    saveInfractions(); closeMotif(); closeModal(); 
-                    showAlert(`🚫 ${nom} ${prenomF} BANNI (3 avertissements)`); 
-                    return; 
-                } 
-                saveInfractions(); closeMotif(); closeModal(); 
-                showAlert(`✅ Avertissement pour ${nom} ${prenomF} (${ua.length}/3)<br>👮 Par: ${controleurSanction}`); 
-            } else { 
-                infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); 
-                saveInfractions(); closeMotif(); closeModal(); 
-                showAlert(`🚫 ${nom} ${prenomF} BANNI<br>👮 Par: ${controleurSanction}`); 
-            } 
-        }
-        function checkInfo(nom, prenom) { 
-            const fn = (nom + ' ' + prenom).toLowerCase(); 
-            const avert = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
-            const banni = (infractions.bannis || []).find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fn); 
-            const isV = isUserValid(nom, prenom); 
-            let h = `<div style="text-align:left;"><h3 style="text-align:center;">${nom.toUpperCase()} ${prenom}</h3>`; 
-            h += `<p>${isV ? '🪪 Carte valide' : '❌ Pas de carte'}</p>`; 
-            if (banni) { 
-                h += '<p style="color:#dc3545;font-weight:bold;">🚫 BANNI</p>'; 
-                if (banni.controleurSanction) h += `<p>👮 Sanctionné par: <strong>${banni.controleurSanction}</strong></p>`;
-                if (banni.motifs && banni.motifs.length) { 
-                    h += '<div class="info-motifs" style="background:#f8d7da;"><h4 style="color:#721c24;">Motifs :</h4>'; 
-                    banni.motifs.forEach((m, i) => h += `<div class="info-motif-item"><strong>#${i+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? '<br>👮 ' + m.controleurSanction : ''}</div>`); 
-                    h += '</div>'; 
-                } 
-            } else h += '<p style="color:#28a745;">✅ Non banni</p>'; 
-            h += `<p style="font-weight:bold;">⚠️ Avertissements actifs : ${avert.length}/3</p>`; 
-            if (avert.length) { 
-                h += '<div class="info-motifs"><h4>Détails :</h4>'; 
-                avert.forEach((a, i) => h += `<div class="info-motif-item"><strong>#${i+1}</strong> - ${a.date || ''}: ${a.motif || ''}${a.controleurSanction ? '<br>👮 ' + a.controleurSanction : ''}</div>`); 
-                h += '</div>'; 
-            } 
-            h += '</div>'; 
-            showAlert(h); 
-        }
+        function confirmSanction() { const nom = document.getElementById('modalNom').value.trim().toUpperCase(); const prenom = document.getElementById('modalPrenom').value.trim(); const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const motif = document.getElementById('motifInput').value || "Non spécifié"; const controleurSanction = document.getElementById('motifControleur').value || "Non spécifié"; const dateNow = new Date().toLocaleString('fr-FR'); if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; if (pendingSanctionType === 'avertissements') { infractions.avertissements.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); const fn = (nom + ' ' + prenomF).toLowerCase(); const ua = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); if (ua.length >= 3) { const motifs = ua.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motifs, controleurSanction, date: dateNow }); infractions.avertissements = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived); saveInfractions(); closeMotif(); closeModal(); showAlert(`🚫 ${nom} ${prenomF} BANNI (3 avertissements)`); return; } saveInfractions(); closeMotif(); closeModal(); showAlert(`✅ Avertissement pour ${nom} ${prenomF} (${ua.length}/3)<br>👮 Par: ${controleurSanction}`); } else { infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); saveInfractions(); closeMotif(); closeModal(); showAlert(`🚫 ${nom} ${prenomF} BANNI<br>👮 Par: ${controleurSanction}`); } }
+        function checkInfo(nom, prenom) { const fn = (nom + ' ' + prenom).toLowerCase(); const avert = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); const banni = (infractions.bannis || []).find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fn); const isV = isUserValid(nom, prenom); let h = `<div style="text-align:left;"><h3 style="text-align:center;">${nom.toUpperCase()} ${prenom}</h3>`; h += `<p>${isV ? '🪪 Carte valide' : '❌ Pas de carte'}</p>`; if (banni) { h += '<p style="color:#dc3545;font-weight:bold;">🚫 BANNI</p>'; if (banni.controleurSanction) h += `<p>👮 Sanctionné par: <strong>${banni.controleurSanction}</strong></p>`; if (banni.motifs && banni.motifs.length) { h += '<div class="info-motifs" style="background:#f8d7da;"><h4 style="color:#721c24;">Motifs :</h4>'; banni.motifs.forEach((m, i) => h += `<div class="info-motif-item"><strong>#${i+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? '<br>👮 ' + m.controleurSanction : ''}</div>`); h += '</div>'; } } else h += '<p style="color:#28a745;">✅ Non banni</p>'; h += `<p style="font-weight:bold;">⚠️ Avertissements actifs : ${avert.length}/3</p>`; if (avert.length) { h += '<div class="info-motifs"><h4>Détails :</h4>'; avert.forEach((a, i) => h += `<div class="info-motif-item"><strong>#${i+1}</strong> - ${a.date || ''}: ${a.motif || ''}${a.controleurSanction ? '<br>👮 ' + a.controleurSanction : ''}</div>`); h += '</div>'; } h += '</div>'; showAlert(h); }
         function openAdmin() { if (prompt("Code Admin :") === "admin") { renderAdminList(); document.getElementById('adminModal').style.display = 'block'; } }
         function closeAdmin() { document.getElementById('adminModal').style.display = 'none'; }
         function addValidUser() { let nom = document.getElementById('adminAddNom').value.trim().toUpperCase(); let prenom = document.getElementById('adminAddPrenom').value.trim(); if (nom && prenom) { prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); validUsers.push({ nom, prenom }); saveValidUsers(); renderAdminList(); document.getElementById('adminAddNom').value = ""; document.getElementById('adminAddPrenom').value = ""; } }
