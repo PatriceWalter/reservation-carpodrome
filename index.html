@@ -364,14 +364,14 @@
             database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
             // INFRACTIONS: Lecture depuis la base CENTRALE (synchronisée avec appli contrôleurs)
             dbCentral.ref('infractions').on('value', (snap) => { infractions = snap.val() || { avertissements: [], bannis: [], archives: [] }; if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; if (!infractions.archives) infractions.archives = []; updateCounts(); console.log('📡 Infractions synchronisées depuis base centrale'); }); 
-            database.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
+            dbCentral.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); console.log('🪪 Cartes valides synchronisées depuis base centrale'); }); 
             dbCentral.ref('controleurs').on('value', (snap) => { controleurs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : []; updateControleurSelect(); updateMotifControleurSelect(); updateExclusionControleurSelect(); }); 
             database.ref('calendrierConfig').on('value', (snapshot) => { const data = snapshot.val(); if (data) { calendrierConfig = data; } else { calendrierConfig = { annee: 2026, joursOuverture: DEFAULT_JOURS_OUVERTURE, fermeMatin: DEFAULT_FERME_MATIN }; saveCalendrierConfig(); } updateMainTitle(); renderMonths(); }); 
         }
         function saveReservations() { if (firebaseReady) database.ref('reservations').set(reservations); }
         // INFRACTIONS: Sauvegarde dans la base CENTRALE (synchronisée avec appli contrôleurs)
         function saveInfractions() { if (firebaseReady) dbCentral.ref('infractions').set(infractions); }
-        function saveValidUsers() { if (firebaseReady) { const o = {}; validUsers.forEach((u, i) => o['user_' + i] = u); database.ref('validUsers').set(o); } }
+        function saveValidUsers() { if (firebaseReady) { const o = {}; validUsers.forEach((u, i) => o['user_' + i] = u); dbCentral.ref('validUsers').set(o); } }
         function saveCalendrierConfig() { if (firebaseReady) database.ref('calendrierConfig').set(calendrierConfig); }
         function getJoursOuverture() { return calendrierConfig.joursOuverture || DEFAULT_JOURS_OUVERTURE; }
         function getFermeMatin() { return calendrierConfig.fermeMatin || DEFAULT_FERME_MATIN; }
