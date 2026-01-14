@@ -188,10 +188,8 @@
                 <select id="modalMode" onchange="toggleBinomeField()"><option value="Individuel">👤 Individuel</option><option value="Américaine">👥 Américaine (binôme)</option></select>
                 <div id="binomeZone" style="display: none;"><label>Nom du binôme</label><input type="text" id="modalBinome" placeholder="Nom et prénom du binôme"></div>
                 <div id="checkZone" style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="modalControle" onchange="updateControlText()" style="width:22px; height:22px; cursor: pointer;">
-                        <span id="controlStatusText" style="font-weight: bold;">Cliquer pour valider le contrôle</span>
-                    </div>
+                    <span id="controlStatusText" style="font-weight: bold; color: #666;">Non contrôlé</span>
+                    <input type="hidden" id="modalControle">
                     <input type="hidden" id="modalHeure">
                 </div>
                 <div id="infractionsButtons" style="display:none; border-top: 1px solid #ddd; padding-top: 15px; margin-top: 15px;">
@@ -365,7 +363,7 @@
             database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); 
             database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
             // INFRACTIONS: Lecture depuis la base CENTRALE (synchronisée avec appli contrôleurs)
-            dbCentral.ref('infractions').on('value', (snap) => { infractions = snap.val() || { avertissements: [], bannis: [] }; if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; updateCounts(); console.log('📡 Infractions synchronisées depuis base centrale'); }); 
+            dbCentral.ref('infractions').on('value', (snap) => { infractions = snap.val() || { avertissements: [], bannis: [], archives: [] }; if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; if (!infractions.archives) infractions.archives = []; updateCounts(); console.log('📡 Infractions synchronisées depuis base centrale'); }); 
             database.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (!document.getElementById('postesPage').classList.contains('hidden')) renderPostes(); }); 
             dbCentral.ref('controleurs').on('value', (snap) => { controleurs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : []; updateControleurSelect(); updateMotifControleurSelect(); updateExclusionControleurSelect(); }); 
             database.ref('calendrierConfig').on('value', (snapshot) => { const data = snapshot.val(); if (data) { calendrierConfig = data; } else { calendrierConfig = { annee: 2026, joursOuverture: DEFAULT_JOURS_OUVERTURE, fermeMatin: DEFAULT_FERME_MATIN }; saveCalendrierConfig(); } updateMainTitle(); renderMonths(); }); 
@@ -411,31 +409,36 @@
         function confirmControleur() { const c = document.getElementById('selectControleur').value; if (!c) { alert('Choisir un contrôleur'); return; } const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = true; p.controleur = c; const n = new Date(); p.heure = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); saveReservations(); } closeControleurModal(); }
         function annulerControle() { const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = false; p.controleur = ''; p.heure = ''; saveReservations(); } closeControleurModal(); }
         function toggleBinomeField() { document.getElementById('binomeZone').style.display = document.getElementById('modalMode').value === 'Américaine' ? 'block' : 'none'; }
-        function openModal(n, data) { curP = n; document.getElementById('modalTitle').textContent = 'Poste ' + n; document.getElementById('modalDate').textContent = curFullDate + " " + getAnnee(); document.getElementById('modalNom').value = data.nom || ''; document.getElementById('modalPrenom').value = data.prenom || ''; document.getElementById('modalControle').checked = data.controlled || false; document.getElementById('modalHeure').value = data.heure || ''; document.getElementById('modalCreneau').value = data.creneau || ''; document.getElementById('modalMode').value = data.modeReservation || 'Individuel'; document.getElementById('modalBinome').value = data.binome || ''; toggleBinomeField(); updateControlText(); checkCardBadge(); document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none'; document.getElementById('posteModal').style.display = 'block'; }
+        function openModal(n, data) { curP = n; document.getElementById('modalTitle').textContent = 'Poste ' + n; document.getElementById('modalDate').textContent = curFullDate + " " + getAnnee(); document.getElementById('modalNom').value = data.nom || ''; document.getElementById('modalPrenom').value = data.prenom || ''; document.getElementById('modalHeure').value = data.heure || ''; document.getElementById('modalCreneau').value = data.creneau || ''; document.getElementById('modalMode').value = data.modeReservation || 'Individuel'; document.getElementById('modalBinome').value = data.binome || ''; toggleBinomeField(); updateControlText(); checkCardBadge(); document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none'; document.getElementById('posteModal').style.display = 'block'; }
         function closeModal() { document.getElementById('posteModal').style.display = 'none'; }
-        function saveModal() { let nom = document.getElementById('modalNom').value.trim().toUpperCase(); let prenom = document.getElementById('modalPrenom').value.trim(); if (!nom || !prenom) { closeModal(); return; } prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const banni = (infractions.bannis || []).find(b => { if (!b.nom || b.nom.toUpperCase() !== nom || !b.prenom || b.prenom.toLowerCase() !== prenom.toLowerCase()) return false; if (b.typeExclusion === 'temporaire' && b.dateFin) { const now = new Date(); const fin = new Date(b.dateFin); if (now > fin) return false; } return true; }); if (banni) { const typeMsg = banni.typeExclusion === 'temporaire' ? `EXCLU TEMPORAIREMENT jusqu'au ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}` : 'EXCLU DÉFINITIVEMENT'; showAlert(`🚫 ${nom} ${prenom} est ${typeMsg} !`); return; } if (!reservations[curDKey]) reservations[curDKey] = {}; reservations[curDKey][curP] = { nom, prenom, controlled: document.getElementById('modalControle').checked, heure: document.getElementById('modalHeure').value, creneau: document.getElementById('modalCreneau').value, modeReservation: document.getElementById('modalMode').value, binome: document.getElementById('modalMode').value === 'Américaine' ? document.getElementById('modalBinome').value.trim() : '' }; saveReservations(); renderPostes(); closeModal(); showMonths(); }
+        function saveModal() { let nom = document.getElementById('modalNom').value.trim().toUpperCase(); let prenom = document.getElementById('modalPrenom').value.trim(); if (!nom || !prenom) { closeModal(); return; } prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const banni = (infractions.bannis || []).find(b => { if (!b.nom || b.nom.toUpperCase() !== nom || !b.prenom || b.prenom.toLowerCase() !== prenom.toLowerCase()) return false; if (b.typeExclusion === 'temporaire' && b.dateFin) { const now = new Date(); const fin = new Date(b.dateFin); if (now > fin) return false; } return true; }); if (banni) { const typeMsg = banni.typeExclusion === 'temporaire' ? `EXCLU TEMPORAIREMENT jusqu'au ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}` : 'EXCLU DÉFINITIVEMENT'; showAlert(`🚫 ${nom} ${prenom} est ${typeMsg} !`); return; } if (!reservations[curDKey]) reservations[curDKey] = {}; const existing = reservations[curDKey][curP] || {}; reservations[curDKey][curP] = { nom, prenom, controlled: existing.controlled || false, controleur: existing.controleur || '', heure: existing.heure || '', creneau: document.getElementById('modalCreneau').value, modeReservation: document.getElementById('modalMode').value, binome: document.getElementById('modalMode').value === 'Américaine' ? document.getElementById('modalBinome').value.trim() : '' }; saveReservations(); renderPostes(); closeModal(); showMonths(); }
         function deleteModal() { if (reservations[curDKey] && reservations[curDKey][curP]) { delete reservations[curDKey][curP]; saveReservations(); renderPostes(); } closeModal(); }
-        function updateControlText() { const cb = document.getElementById('modalControle'); if (cb.checked) { if (!document.getElementById('modalHeure').value) { const n = new Date(); document.getElementById('modalHeure').value = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); } document.getElementById('controlStatusText').textContent = "✅ Contrôlé à " + document.getElementById('modalHeure').value; document.getElementById('controlStatusText').style.color = "#17a2b8"; } else { document.getElementById('controlStatusText').textContent = "Cliquer pour valider le contrôle"; document.getElementById('controlStatusText').style.color = "#666"; } }
+        function updateControlText() { const heure = document.getElementById('modalHeure').value; if (heure) { document.getElementById('controlStatusText').textContent = "✅ Contrôlé à " + heure; document.getElementById('controlStatusText').style.color = "#17a2b8"; } else { document.getElementById('controlStatusText').textContent = "Non contrôlé"; document.getElementById('controlStatusText').style.color = "#666"; } }
         function isUserValid(nom, prenom) { return validUsers.some(u => u.nom && u.prenom && u.nom.toLowerCase() === (nom || '').toLowerCase() && u.prenom.toLowerCase() === (prenom || '').toLowerCase()); }
         function checkCardBadge() { document.getElementById('modalBadgeZone').style.display = isUserValid(document.getElementById('modalNom').value, document.getElementById('modalPrenom').value) ? 'block' : 'none'; }
         function showInfractionsMenu() { hideAll(); document.getElementById('infractionsMenuPage').classList.remove('hidden'); updateCounts(); }
         function updateCounts() { document.getElementById('countAvertissement').textContent = ((infractions.avertissements || []).length) + ' dossier(s)'; document.getElementById('countBanni').textContent = ((infractions.bannis || []).length) + ' dossier(s)'; }
         function showInfractionList(type) { hideAll(); document.getElementById('infractionsDetailPage').classList.remove('hidden'); document.getElementById('detailTitle').textContent = type === 'avertissements' ? '⚠️ AVERTISSEMENTS' : '🚫 EXCLUSIONS'; const list = infractions[type] || []; const c = document.getElementById('detailList'); if (!list.length) { c.innerHTML = '<p style="text-align:center;color:#666;">Aucun dossier</p>'; return; } if (type === 'avertissements') { c.innerHTML = list.map((item, i) => `<div class="infraction-item avertissement"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`).join(''); } else { c.innerHTML = list.map((item, i) => { let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; let finExclusion = ''; if (item.typeExclusion === 'temporaire' && item.dateFin) { const now = new Date(); const fin = new Date(item.dateFin); if (now > fin) { typeLabel = `<span style="background:#28a745;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">✅ Expirée</span>`; finExclusion = `<br><small style="color:#28a745;">Exclusion terminée le ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } else { finExclusion = `<br><small style="color:#ff9800;">Fin de l'exclusion : ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } } let mh = ''; if (item.motifs && item.motifs.length) { mh = `<div class="motifs-list"><h4>📋 Historique des infractions :</h4>${item.motifs.map((m, j) => `<div class="motif-item"><strong>#${j+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? ' <em>(👮 ' + m.controleurSanction + ')</em>' : ''}</div>`).join('')}</div>`; } else if (item.motif) { mh = `<div class="motifs-list"><h4>📋 Motif :</h4><div class="motif-item">${item.motif}</div></div>`; } return `<div class="infraction-item banni"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong> ${typeLabel}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 Exclu le : ${item.date || ''}</small>${finExclusion}${mh}</div><div class="infraction-actions"><button class="btn btn-unban" onclick="leverExclusion(${i})">🔓 Lever</button><button class="btn btn-delete" onclick="removeBanni(${i})">🗑️</button></div></div></div>`; }).join(''); } }
-        function removeAvertissement(i) { 
+        async function removeAvertissement(i) { 
             if (!checkAdminPassword()) return; 
             if (!confirm('Archiver cet avertissement ?')) return;
             const avert = infractions.avertissements[i];
-            if (!infractions.archives) infractions.archives = [];
-            infractions.archives.push({
-                ...avert,
-                type: 'avertissement',
-                dateArchive: new Date().toLocaleDateString('fr-FR'),
-                raisonArchive: 'Archivé manuellement'
-            });
-            infractions.avertissements.splice(i, 1); 
-            saveInfractions(); 
-            showInfractionList('avertissements'); 
-            showAlert("✅ Avertissement archivé."); 
+            try {
+                // Ajouter aux archives via push
+                await dbCentral.ref('infractions/archives').push({
+                    ...avert,
+                    type: 'avertissement',
+                    dateArchive: new Date().toLocaleDateString('fr-FR'),
+                    raisonArchive: 'Archivé manuellement'
+                });
+                // Supprimer de la liste locale et sauvegarder
+                infractions.avertissements.splice(i, 1); 
+                await dbCentral.ref('infractions/avertissements').set(infractions.avertissements);
+                showInfractionList('avertissements'); 
+                showAlert("✅ Avertissement archivé."); 
+            } catch(e) {
+                showAlert("❌ Erreur: " + e.message);
+            }
         }
         
         function removeBanni(i) { 
@@ -447,21 +450,26 @@
             showAlert("✅ Exclusion supprimée."); 
         }
         
-        function leverExclusion(i) { 
+        async function leverExclusion(i) { 
             if (!checkAdminPassword()) return; 
             if (!confirm('Lever cette exclusion et l\'archiver ?')) return;
             const b = infractions.bannis[i]; 
-            if (!infractions.archives) infractions.archives = [];
-            infractions.archives.push({
-                ...b,
-                type: 'bannissement',
-                dateArchive: new Date().toLocaleDateString('fr-FR'),
-                raisonArchive: 'Exclusion levée'
-            });
-            infractions.bannis.splice(i, 1); 
-            saveInfractions(); 
-            showInfractionList('bannis'); 
-            showAlert(`✅ Exclusion levée et archivée pour ${b.nom} ${b.prenom}`); 
+            try {
+                // Ajouter aux archives via push
+                await dbCentral.ref('infractions/archives').push({
+                    ...b,
+                    type: 'bannissement',
+                    dateArchive: new Date().toLocaleDateString('fr-FR'),
+                    raisonArchive: 'Exclusion levée'
+                });
+                // Supprimer de la liste locale et sauvegarder
+                infractions.bannis.splice(i, 1); 
+                await dbCentral.ref('infractions/bannis').set(infractions.bannis);
+                showInfractionList('bannis'); 
+                showAlert(`✅ Exclusion levée et archivée pour ${b.nom} ${b.prenom}`); 
+            } catch(e) {
+                showAlert("❌ Erreur: " + e.message);
+            }
         }
         function donnerAvertissement() { document.getElementById('motifInput').value = ''; document.getElementById('motifControleur').value = ''; updateMotifControleurSelect(); document.getElementById('motifModal').style.display = 'block'; }
         function closeMotif() { document.getElementById('motifModal').style.display = 'none'; }
