@@ -285,12 +285,16 @@
             <div class="modal-header" style="background:#dc3545;"><h2>🚫 Exclusion</h2></div>
             <div class="modal-body">
                 <div id="exclusionInfo" style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #ffc107;"></div>
-                <label>👮 Contrôleur ayant constaté l'infraction :</label>
-                <select id="exclusionControleur" style="width:100%;padding:12px;font-size:16px;border:2px solid #ddd;border-radius:8px;margin-bottom:15px;">
-                    <option value="">-- Choisir le contrôleur --</option>
-                </select>
-                <label>Motif de l'exclusion :</label>
-                <input type="text" id="exclusionMotif" placeholder="Ex: 2ème infraction - Non respect du règlement...">
+                <div id="exclusionControleurGroup">
+                    <label>👮 Contrôleur ayant constaté l'infraction :</label>
+                    <select id="exclusionControleur" style="width:100%;padding:12px;font-size:16px;border:2px solid #ddd;border-radius:8px;margin-bottom:15px;">
+                        <option value="">-- Choisir le contrôleur --</option>
+                    </select>
+                </div>
+                <div id="exclusionMotifGroup">
+                    <label>Motif de l'exclusion :</label>
+                    <input type="text" id="exclusionMotif" placeholder="Ex: Non respect du règlement...">
+                </div>
                 <label style="margin-top:15px;">Type d'exclusion :</label>
                 <div style="display:flex; gap:15px; margin:15px 0;">
                     <label style="display:flex; align-items:center; gap:8px; padding:15px; background:#f8f9fa; border-radius:8px; cursor:pointer; flex:1; border:2px solid #ddd;" onclick="this.querySelector('input').checked=true; document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l=>l.style.borderColor='#ddd'); this.style.borderColor='#dc3545';">
@@ -417,16 +421,162 @@
         function showInfractionsMenu() { hideAll(); document.getElementById('infractionsMenuPage').classList.remove('hidden'); updateCounts(); }
         function updateCounts() { document.getElementById('countAvertissement').textContent = ((infractions.avertissements || []).length) + ' dossier(s)'; document.getElementById('countBanni').textContent = ((infractions.bannis || []).length) + ' dossier(s)'; }
         function showInfractionList(type) { hideAll(); document.getElementById('infractionsDetailPage').classList.remove('hidden'); document.getElementById('detailTitle').textContent = type === 'avertissements' ? '⚠️ AVERTISSEMENTS' : '🚫 EXCLUSIONS'; const list = infractions[type] || []; const c = document.getElementById('detailList'); if (!list.length) { c.innerHTML = '<p style="text-align:center;color:#666;">Aucun dossier</p>'; return; } if (type === 'avertissements') { c.innerHTML = list.map((item, i) => `<div class="infraction-item avertissement"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`).join(''); } else { c.innerHTML = list.map((item, i) => { let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; let finExclusion = ''; if (item.typeExclusion === 'temporaire' && item.dateFin) { const now = new Date(); const fin = new Date(item.dateFin); if (now > fin) { typeLabel = `<span style="background:#28a745;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">✅ Expirée</span>`; finExclusion = `<br><small style="color:#28a745;">Exclusion terminée le ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } else { finExclusion = `<br><small style="color:#ff9800;">Fin de l'exclusion : ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } } let mh = ''; if (item.motifs && item.motifs.length) { mh = `<div class="motifs-list"><h4>📋 Historique des infractions :</h4>${item.motifs.map((m, j) => `<div class="motif-item"><strong>#${j+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? ' <em>(👮 ' + m.controleurSanction + ')</em>' : ''}</div>`).join('')}</div>`; } else if (item.motif) { mh = `<div class="motifs-list"><h4>📋 Motif :</h4><div class="motif-item">${item.motif}</div></div>`; } return `<div class="infraction-item banni"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong> ${typeLabel}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 Exclu le : ${item.date || ''}</small>${finExclusion}${mh}</div><div class="infraction-actions"><button class="btn btn-unban" onclick="leverExclusion(${i})">🔓 Lever</button><button class="btn btn-delete" onclick="removeBanni(${i})">🗑️</button></div></div></div>`; }).join(''); } }
-        function removeAvertissement(i) { if (!checkAdminPassword()) return; infractions.avertissements.splice(i, 1); saveInfractions(); showInfractionList('avertissements'); showAlert("✅ Avertissement supprimé."); }
-        function removeBanni(i) { if (!checkAdminPassword()) return; if (!confirm('Supprimer définitivement cette exclusion ?')) return; infractions.bannis.splice(i, 1); saveInfractions(); showInfractionList('bannis'); showAlert("✅ Exclusion supprimée."); }
-        function leverExclusion(i) { if (!checkAdminPassword()) return; const b = infractions.bannis[i]; infractions.bannis.splice(i, 1); saveInfractions(); showInfractionList('bannis'); showAlert(`✅ Exclusion levée pour ${b.nom} ${b.prenom}`); }
+        function removeAvertissement(i) { 
+            if (!checkAdminPassword()) return; 
+            if (!confirm('Archiver cet avertissement ?')) return;
+            const avert = infractions.avertissements[i];
+            if (!infractions.archives) infractions.archives = [];
+            infractions.archives.push({
+                ...avert,
+                type: 'avertissement',
+                dateArchive: new Date().toLocaleDateString('fr-FR'),
+                raisonArchive: 'Archivé manuellement'
+            });
+            infractions.avertissements.splice(i, 1); 
+            saveInfractions(); 
+            showInfractionList('avertissements'); 
+            showAlert("✅ Avertissement archivé."); 
+        }
+        
+        function removeBanni(i) { 
+            if (!checkAdminPassword()) return; 
+            if (!confirm('Supprimer définitivement cette exclusion ? (Préférez "Lever" pour archiver)')) return; 
+            infractions.bannis.splice(i, 1); 
+            saveInfractions(); 
+            showInfractionList('bannis'); 
+            showAlert("✅ Exclusion supprimée."); 
+        }
+        
+        function leverExclusion(i) { 
+            if (!checkAdminPassword()) return; 
+            if (!confirm('Lever cette exclusion et l\'archiver ?')) return;
+            const b = infractions.bannis[i]; 
+            if (!infractions.archives) infractions.archives = [];
+            infractions.archives.push({
+                ...b,
+                type: 'bannissement',
+                dateArchive: new Date().toLocaleDateString('fr-FR'),
+                raisonArchive: 'Exclusion levée'
+            });
+            infractions.bannis.splice(i, 1); 
+            saveInfractions(); 
+            showInfractionList('bannis'); 
+            showAlert(`✅ Exclusion levée et archivée pour ${b.nom} ${b.prenom}`); 
+        }
         function donnerAvertissement() { document.getElementById('motifInput').value = ''; document.getElementById('motifControleur').value = ''; updateMotifControleurSelect(); document.getElementById('motifModal').style.display = 'block'; }
         function closeMotif() { document.getElementById('motifModal').style.display = 'none'; }
-        function confirmerAvertissement() { const nom = document.getElementById('modalNom').value.trim().toUpperCase(); const prenom = document.getElementById('modalPrenom').value.trim(); const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const motif = document.getElementById('motifInput').value || "Non spécifié"; const controleurSanction = document.getElementById('motifControleur').value || "Non spécifié"; const dateNow = new Date().toLocaleString('fr-FR'); if (!infractions.avertissements) infractions.avertissements = []; if (!infractions.bannis) infractions.bannis = []; const fn = (nom + ' ' + prenomF).toLowerCase(); const avertExistants = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); if (avertExistants.length >= 1) { closeMotif(); ouvrirChoixExclusion(avertExistants[0]); return; } infractions.avertissements.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); saveInfractions(); closeMotif(); closeModal(); showAlert(`⚠️ <strong>1er AVERTISSEMENT</strong> pour ${nom} ${prenomF}<br><br>📜 Selon le règlement :<br>• Prochain écart = <strong>EXCLUSION</strong><br><br>👮 Par: ${controleurSanction}`); }
-        function ouvrirChoixExclusion(avertissementExistant = null) { const nom = document.getElementById('modalNom').value.trim().toUpperCase(); const prenom = document.getElementById('modalPrenom').value.trim(); const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); let infoText = ''; if (avertissementExistant) { infoText = `<strong>⚠️ 2ème INFRACTION détectée !</strong><br><br>📜 Selon le règlement, ${nom} ${prenomF} a déjà reçu un avertissement le ${avertissementExistant.date}.<br>Motif précédent : "${avertissementExistant.motif}"<br><br>👉 <strong>Une exclusion est obligatoire.</strong>`; } else { infoText = `<strong>🚫 Exclusion directe</strong><br><br>Vous allez exclure ${nom} ${prenomF}.<br>Choisissez le type d'exclusion.`; } document.getElementById('exclusionInfo').innerHTML = infoText; document.getElementById('exclusionMotif').value = avertissementExistant ? '2ème infraction - ' : ''; document.getElementById('exclusionControleur').value = ''; document.querySelectorAll('input[name="typeExclusion"]').forEach(r => r.checked = false); document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l => l.style.borderColor = '#ddd'); updateExclusionControleurSelect(); document.getElementById('exclusionModal').style.display = 'block'; }
+        // Variable pour stocker les données de la 2ème infraction
+        let pendingExclusionData = null;
+        
+        function confirmerAvertissement() { 
+            const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
+            const prenom = document.getElementById('modalPrenom').value.trim(); 
+            const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
+            const motif = document.getElementById('motifInput').value || "Non spécifié"; 
+            const controleurSanction = document.getElementById('motifControleur').value || "Non spécifié"; 
+            const dateNow = new Date().toLocaleString('fr-FR'); 
+            if (!infractions.avertissements) infractions.avertissements = []; 
+            if (!infractions.bannis) infractions.bannis = []; 
+            const fn = (nom + ' ' + prenomF).toLowerCase(); 
+            const avertExistants = infractions.avertissements.filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
+            if (avertExistants.length >= 1) { 
+                // 2ème infraction : stocker motif/contrôleur déjà saisis et passer à l'exclusion
+                pendingExclusionData = { motif, controleurSanction };
+                closeMotif(); 
+                ouvrirChoixExclusion(avertExistants[0]); 
+                return; 
+            } 
+            infractions.avertissements.push({ id: Date.now().toString(), nom, prenom: prenomF, motif, controleurSanction, date: dateNow }); 
+            saveInfractions(); 
+            closeMotif(); 
+            closeModal(); 
+            showAlert(`⚠️ <strong>1er AVERTISSEMENT</strong> pour ${nom} ${prenomF}<br><br>📜 Selon le règlement :<br>• Prochain écart = <strong>EXCLUSION</strong><br><br>👮 Par: ${controleurSanction}`); 
+        }
+        
+        function ouvrirChoixExclusion(avertissementExistant = null) { 
+            const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
+            const prenom = document.getElementById('modalPrenom').value.trim(); 
+            const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
+            let infoText = ''; 
+            
+            if (avertissementExistant && pendingExclusionData) { 
+                // 2ème infraction détectée depuis le formulaire d'avertissement
+                infoText = `<strong>⚠️ 2ème INFRACTION détectée !</strong><br><br>📜 Selon le règlement, ${nom} ${prenomF} a déjà reçu un avertissement le ${avertissementExistant.date}.<br>Motif précédent : "${avertissementExistant.motif}"<br><br>📝 <strong>Nouvelle infraction :</strong> ${pendingExclusionData.motif}<br>👮 <strong>Constatée par :</strong> ${pendingExclusionData.controleurSanction}<br><br>👉 <strong>Choisissez uniquement le type d'exclusion :</strong>`; 
+                // Masquer les champs motif et contrôleur car déjà saisis
+                document.getElementById('exclusionMotifGroup').style.display = 'none';
+                document.getElementById('exclusionControleurGroup').style.display = 'none';
+            } else { 
+                // Exclusion directe (bouton Exclure)
+                pendingExclusionData = null;
+                infoText = `<strong>🚫 Exclusion directe</strong><br><br>Vous allez exclure ${nom} ${prenomF}.<br>Remplissez les informations ci-dessous.`; 
+                // Afficher les champs motif et contrôleur
+                document.getElementById('exclusionMotifGroup').style.display = 'block';
+                document.getElementById('exclusionControleurGroup').style.display = 'block';
+                document.getElementById('exclusionMotif').value = '';
+                document.getElementById('exclusionControleur').value = '';
+            } 
+            
+            document.getElementById('exclusionInfo').innerHTML = infoText; 
+            document.querySelectorAll('input[name="typeExclusion"]').forEach(r => r.checked = false); 
+            document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l => l.style.borderColor = '#ddd'); 
+            updateExclusionControleurSelect(); 
+            document.getElementById('exclusionModal').style.display = 'block'; 
+        }
         function closeExclusion() { document.getElementById('exclusionModal').style.display = 'none'; }
         function updateExclusionControleurSelect() { const s = document.getElementById('exclusionControleur'); s.innerHTML = '<option value="">-- Choisir le contrôleur --</option>'; (controleurs || []).forEach(c => { const n = typeof c === 'string' ? c : (c.nom || ''); if (n) s.innerHTML += `<option value="${n}">${n}</option>`; }); }
-        function confirmerExclusion() { const nom = document.getElementById('modalNom').value.trim().toUpperCase(); const prenom = document.getElementById('modalPrenom').value.trim(); const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); const motif = document.getElementById('exclusionMotif').value || "Non spécifié"; const controleurSanction = document.getElementById('exclusionControleur').value || "Non spécifié"; const typeExclusion = document.querySelector('input[name="typeExclusion"]:checked')?.value; if (!typeExclusion) { alert('Veuillez choisir le type d\'exclusion (temporaire ou définitive)'); return; } const dateNow = new Date().toLocaleString('fr-FR'); const fn = (nom + ' ' + prenomF).toLowerCase(); const avertExistants = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); let motifs = avertExistants.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); motifs.push({ motif, date: dateNow, controleurSanction }); let dateFin = null; if (typeExclusion === 'temporaire') { dateFin = new Date(); dateFin.setMonth(dateFin.getMonth() + 1); dateFin = dateFin.toISOString(); } infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motifs, motif, controleurSanction, date: dateNow, typeExclusion, dateFin }); infractions.avertissements = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived); saveInfractions(); closeExclusion(); closeModal(); const typeText = typeExclusion === 'temporaire' ? 'TEMPORAIRE (1 mois)' : 'DÉFINITIVE'; const finText = typeExclusion === 'temporaire' ? `<br>📅 Fin de l'exclusion : ${new Date(dateFin).toLocaleDateString('fr-FR')}` : ''; showAlert(`🚫 <strong>EXCLUSION ${typeText}</strong><br><br>${nom} ${prenomF} est maintenant exclu(e).${finText}<br><br>👮 Par: ${controleurSanction}`); }
+        function confirmerExclusion() { 
+            const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
+            const prenom = document.getElementById('modalPrenom').value.trim(); 
+            const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
+            
+            // Utiliser les données déjà saisies si disponibles (2ème infraction)
+            let motif, controleurSanction;
+            if (pendingExclusionData) {
+                motif = pendingExclusionData.motif;
+                controleurSanction = pendingExclusionData.controleurSanction;
+            } else {
+                motif = document.getElementById('exclusionMotif').value || "Non spécifié"; 
+                controleurSanction = document.getElementById('exclusionControleur').value || "Non spécifié";
+            }
+            
+            const typeExclusion = document.querySelector('input[name="typeExclusion"]:checked')?.value; 
+            if (!typeExclusion) { alert('Veuillez choisir le type d\'exclusion (temporaire ou définitive)'); return; } 
+            
+            const dateNow = new Date().toLocaleString('fr-FR'); 
+            const fn = (nom + ' ' + prenomF).toLowerCase(); 
+            const avertExistants = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
+            let motifs = avertExistants.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); 
+            motifs.push({ motif, date: dateNow, controleurSanction }); 
+            
+            let dateFin = null; 
+            if (typeExclusion === 'temporaire') { 
+                dateFin = new Date(); 
+                dateFin.setMonth(dateFin.getMonth() + 1); 
+                dateFin = dateFin.toISOString(); 
+            } 
+            
+            // Archiver l'avertissement existant avant de l'exclure
+            avertExistants.forEach(a => {
+                if (!infractions.archives) infractions.archives = [];
+                infractions.archives.push({
+                    ...a,
+                    type: 'avertissement',
+                    dateArchive: new Date().toLocaleDateString('fr-FR'),
+                    raisonArchive: 'Converti en exclusion'
+                });
+            });
+            
+            infractions.bannis.push({ id: Date.now().toString(), nom, prenom: prenomF, motifs, motif, controleurSanction, date: dateNow, typeExclusion, dateFin }); 
+            infractions.avertissements = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived); 
+            saveInfractions(); 
+            
+            pendingExclusionData = null; // Reset
+            closeExclusion(); 
+            closeModal(); 
+            const typeText = typeExclusion === 'temporaire' ? 'TEMPORAIRE (1 mois)' : 'DÉFINITIVE'; 
+            const finText = typeExclusion === 'temporaire' ? `<br>📅 Fin de l'exclusion : ${new Date(dateFin).toLocaleDateString('fr-FR')}` : ''; 
+            showAlert(`🚫 <strong>EXCLUSION ${typeText}</strong><br><br>${nom} ${prenomF} est maintenant exclu(e).${finText}<br><br>👮 Par: ${controleurSanction}`); 
+        }
         function checkInfo(nom, prenom) { const fn = (nom + ' ' + prenom).toLowerCase(); const avert = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); const banni = (infractions.bannis || []).find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fn); const isV = isUserValid(nom, prenom); let h = `<div style="text-align:left;"><h3 style="text-align:center;">${nom.toUpperCase()} ${prenom}</h3>`; h += `<p>${isV ? '🪪 Carte valide' : '❌ Pas de carte'}</p>`; if (banni) { let isExpired = false; if (banni.typeExclusion === 'temporaire' && banni.dateFin) { const now = new Date(); const fin = new Date(banni.dateFin); isExpired = now > fin; } if (isExpired) { h += '<p style="color:#28a745;font-weight:bold;">✅ Exclusion temporaire EXPIRÉE</p>'; h += `<p><small>L'exclusion s'est terminée le ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}</small></p>`; } else { const typeText = banni.typeExclusion === 'temporaire' ? '⏱️ EXCLU TEMPORAIREMENT' : '🚫 EXCLU DÉFINITIVEMENT'; h += `<p style="color:#dc3545;font-weight:bold;">${typeText}</p>`; if (banni.typeExclusion === 'temporaire' && banni.dateFin) { h += `<p style="color:#ff9800;">📅 Fin de l'exclusion : ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}</p>`; } if (banni.controleurSanction) h += `<p>👮 Sanctionné par: <strong>${banni.controleurSanction}</strong></p>`; } if (banni.motifs && banni.motifs.length) { h += '<div class="info-motifs" style="background:#f8d7da;"><h4 style="color:#721c24;">Historique des infractions :</h4>'; banni.motifs.forEach((m, i) => h += `<div class="info-motif-item"><strong>#${i+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? '<br>👮 ' + m.controleurSanction : ''}</div>`); h += '</div>'; } } else h += '<p style="color:#28a745;">✅ Non exclu</p>'; if (avert.length) { h += `<p style="font-weight:bold;color:#ffc107;">⚠️ AVERTISSEMENT EN COURS</p>`; h += `<p style="color:#dc3545;"><strong>📜 Prochain écart = EXCLUSION</strong></p>`; h += '<div class="info-motifs" style="background:#fff3cd;"><h4>Détail de l\'avertissement :</h4>'; avert.forEach((a, i) => h += `<div class="info-motif-item">${a.date || ''}: ${a.motif || ''}${a.controleurSanction ? '<br>👮 ' + a.controleurSanction : ''}</div>`); h += '</div>'; } else if (!banni) { h += '<p style="color:#28a745;">✅ Aucun avertissement</p>'; } h += '</div>'; showAlert(h); }
         function openAdmin() { if (prompt("Code Admin :") === "admin") { renderAdminList(); document.getElementById('adminModal').style.display = 'block'; } }
         function closeAdmin() { document.getElementById('adminModal').style.display = 'none'; }
