@@ -432,6 +432,14 @@
                 
                 messaging = firebase.messaging(appCentral);
                 
+                // Notifications au premier plan
+                messaging.onMessage((payload) => {
+                    console.log('📬 Notification reçue:', payload);
+                    const title = payload.notification?.title || '📋 Contrôle AAPPMA';
+                    const body = payload.notification?.body || 'Un contrôle a été effectué';
+                    new Notification(title, { body: body, icon: './icon-192.png' });
+                });
+                
                 if (Notification.permission === 'default') {
                     await demanderPermissionNotification();
                 } else if (Notification.permission === 'granted') {
