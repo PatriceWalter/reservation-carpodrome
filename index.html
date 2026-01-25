@@ -421,13 +421,14 @@
         
         async function initNotifications() {
             try {
-                if (!('Notification' in window)) {
+                if (!('Notification' in window) || !('serviceWorker' in navigator)) {
                     console.log('❌ Notifications non supportées');
                     return;
                 }
                 
-                swRegistration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                console.log('✅ Service Worker enregistré');
+                await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                swRegistration = await navigator.serviceWorker.ready;
+                console.log('✅ Service Worker actif');
                 
                 messaging = firebase.messaging(appCentral);
                 
