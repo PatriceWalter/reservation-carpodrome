@@ -7,13 +7,13 @@ importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-comp
 
 // Configuration Firebase
 firebase.initializeApp({
-    apiKey: "AIzaSyAzE8C0vQo6O-9l9t3azNBKbTzMS92xM2s",
+    apiKey: "AIzaSyCJk0Tfn4IU4DUEKCRVZmI-90s4cAnbyGA",
     authDomain: "appli-controleur-gunder.firebaseapp.com",
     databaseURL: "https://appli-controleur-gunder-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "appli-controleur-gunder",
     storageBucket: "appli-controleur-gunder.firebasestorage.app",
     messagingSenderId: "780831512988",
-    appId: "1:780831512988:web:abc123def456"
+    appId: "1:780831512988:web:f0f263cfaf9abd18269059"
 });
 
 const messaging = firebase.messaging();
