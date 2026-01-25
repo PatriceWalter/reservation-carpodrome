@@ -359,6 +359,7 @@
     </div>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
     <script>
         (function() { 
             const urlParams = new URLSearchParams(window.location.search); 
@@ -403,6 +404,87 @@
             dbCentral = firebase.database(appCentral);
             firebaseReady = true; 
         } catch (e) { console.error("Firebase:", e); }
+        
+        // ===== FCM NOTIFICATIONS =====
+        const VAPID_KEY = "BDmyIuYOB9cEqHLA9QyFycYy-gJnP2BVU6c6CI5TjIElo4qFC7t8MS28hSj0lwk_8ve13BQZw8uEVIJx0GE25IE";
+        const FCM_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxn4ymLy30fj78YW67XyiXecKaV-gb3HfLlMqHojcGSbufhiUUFe2APmuX7hwKV7oRk/exec";
+        let messaging = null;
+        
+        async function initNotifications() {
+            try {
+                if (!('Notification' in window)) {
+                    console.log('❌ Notifications non supportées');
+                    return;
+                }
+                
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                console.log('✅ Service Worker enregistré');
+                
+                messaging = firebase.messaging();
+                
+                if (Notification.permission === 'default') {
+                    await demanderPermissionNotification();
+                } else if (Notification.permission === 'granted') {
+                    await enregistrerToken();
+                }
+            } catch (error) {
+                console.error('❌ Erreur init notifications:', error);
+            }
+        }
+        
+        async function demanderPermissionNotification() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('✅ Permission notifications accordée');
+                    await enregistrerToken();
+                } else {
+                    console.log('❌ Permission notifications refusée');
+                }
+            } catch (error) {
+                console.error('❌ Erreur permission:', error);
+            }
+        }
+        
+        async function enregistrerToken() {
+            try {
+                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                if (token) {
+                    const userName = getCurrentUser();
+                    await dbCentral.ref('fcmTokens/' + userName.replace(/[^a-zA-Z0-9]/g, '_')).set({
+                        token: token,
+                        user: userName,
+                        app: 'Carpodrome',
+                        lastUpdate: new Date().toISOString()
+                    });
+                    console.log('✅ Token FCM enregistré pour', userName);
+                }
+            } catch (error) {
+                console.error('❌ Erreur enregistrement token:', error);
+            }
+        }
+        
+        async function envoyerNotificationControle(poste, controleur) {
+            try {
+                const data = {
+                    titre: "📋 Contrôle Carpodrome",
+                    message: "Poste " + poste + " contrôlé par " + controleur,
+                    poste: poste,
+                    controleur: controleur,
+                    app: "Carpodrome"
+                };
+                
+                await fetch(FCM_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                console.log('✅ Notification envoyée');
+            } catch (error) {
+                console.error('❌ Erreur envoi notification:', error);
+            }
+        }
         const DEFAULT_JOURS_OUVERTURE = { 2: [1, 7, 8, 14, 15, 21, 22, 28, 29], 3: [11, 12, 18, 19, 25, 26], 4: [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 5: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 6: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 7: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31], 8: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30], 9: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] };
         const DEFAULT_FERME_MATIN = { 2: [28], 3: [25], 5: [13], 8: [19], 9: [17] };
         const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -459,6 +541,7 @@
                 document.getElementById('currentUserDisplay').textContent = '👤 ' + selectedUser;
                 setUserPresence(selectedUser);
                 listenOnlineUsers();
+                initNotifications();
                 setupFirebaseListeners(); 
                 renderMonths(); 
                 updateCounts(); 
@@ -579,11 +662,14 @@
             pendingControlePoste = n; 
             const currentUser = getCurrentUser();
             const select = document.getElementById('selectControleur');
-            if (currentUser) {
+            console.log('DEBUG toggleControle - currentUser:', currentUser, '- carpodromeUser:', localStorage.getItem('carpodromeUser'));
+            // TOUJOURS pré-remplir et verrouiller avec l'utilisateur connecté
+            if (currentUser && currentUser !== '') {
                 select.innerHTML = '<option value="' + currentUser + '">' + currentUser + '</option>';
                 select.value = currentUser;
                 select.disabled = true;
             } else {
+                // Pas d'utilisateur connecté - utiliser la liste
                 updateControleurSelect();
                 select.value = reservations[curDKey][n].controleur || '';
                 select.disabled = false;
@@ -603,6 +689,8 @@
                 const n = new Date(); 
                 p.heure = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); 
                 saveReservations(); 
+                // Envoyer notification aux autres contrôleurs
+                envoyerNotificationControle(pendingControlePoste, c);
             } 
             closeControleurModal(); 
         }
