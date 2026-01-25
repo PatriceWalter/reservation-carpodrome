@@ -574,11 +574,38 @@
         function renderPostes() { const g = document.getElementById('postesGrid'); g.innerHTML = ''; if (!reservations[curDKey]) reservations[curDKey] = {}; let l = 0, r = 0, c = 0; for (let i = 1; i <= 14; i++) { const d = reservations[curDKey][i] || {}; if (d.nom) { r++; if (d.controlled) c++; } else l++; g.appendChild(createBox(i, d)); } document.getElementById('statLibre').textContent = l; document.getElementById('statReserve').textContent = r; document.getElementById('statControle').textContent = c; }
         function createBox(n, data) { const div = document.createElement('div'); const hasName = data.nom && data.nom.trim(); let cn = 'poste-box '; if (data.controlled) cn += 'controle'; else if (hasName) cn += 'reserve'; else cn += 'libre'; div.className = cn; div.onclick = (e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') openModal(n, data); }; let h = '<div class="poste-content">'; h += `<div class="poste-title">Poste ${n}</div>`; if (data.controlled && data.heure) h += `<div class="poste-heure">🕒 ${data.heure}</div>`; if (hasName) { h += `<div class="poste-nom">${data.nom.toUpperCase()} ${data.prenom || ''}</div>`; if (data.binome && data.modeReservation === "Américaine") h += `<div class="poste-nom" style="color:#667eea;">${data.binome}</div>`; h += data.modeReservation === "Américaine" ? '<div style="font-size:0.8em;color:#e53e3e;font-weight:bold;">👥 Américaine</div>' : '<div style="font-size:0.8em;color:#38a169;">👤 Individuel</div>'; if (data.creneau) h += `<div style="font-size:0.8em;color:#666;">📅 ${data.creneau}</div>`; if (isUserValid(data.nom, data.prenom)) h += '<div class="badge-peche">🪪 Carte valide</div>'; h += `<button class="btn-info" onclick="event.stopPropagation(); checkInfo('${escapeHtml(data.nom)}', '${escapeHtml(data.prenom || '')}')">ℹ️ Info</button>`; } h += '</div>'; if (data.controlled) h += `<div class="control-zone" onclick="event.stopPropagation();toggleControle(${n})" style="cursor:pointer;"><span class="control-label checked">✅ Contrôlé par ${data.controleur || 'inconnu'}</span></div>`; else h += `<div class="control-zone"><input type="checkbox" onclick="event.stopPropagation();toggleControle(${n})"><label class="control-label">Contrôler</label></div>`; div.innerHTML = h; return div; }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML.replace(/'/g, "\\'"); }
-        function toggleControle(n) { if (!reservations[curDKey] || !reservations[curDKey][n]) return; pendingControlePoste = n; document.getElementById('selectControleur').value = reservations[curDKey][n].controleur || ''; document.getElementById('controleurModal').style.display = 'block'; }
+        function toggleControle(n) { 
+            if (!reservations[curDKey] || !reservations[curDKey][n]) return; 
+            pendingControlePoste = n; 
+            const currentUser = getCurrentUser();
+            const select = document.getElementById('selectControleur');
+            if (currentUser) {
+                select.innerHTML = '<option value="' + currentUser + '">' + currentUser + '</option>';
+                select.value = currentUser;
+                select.disabled = true;
+            } else {
+                updateControleurSelect();
+                select.value = reservations[curDKey][n].controleur || '';
+                select.disabled = false;
+            }
+            document.getElementById('controleurModal').style.display = 'block'; 
+        }
         function updateControleurSelect() { const s = document.getElementById('selectControleur'); if (s) s.innerHTML = '<option value="">-- Choisir --</option>' + controleurs.map(c => `<option value="${c}">${c}</option>`).join(''); }
         function updateMotifControleurSelect() { const s = document.getElementById('motifControleur'); if (s) s.innerHTML = '<option value="">-- Choisir le contrôleur --</option>' + controleurs.map(c => `<option value="${c}">${c}</option>`).join(''); }
         function closeControleurModal() { document.getElementById('controleurModal').style.display = 'none'; pendingControlePoste = null; renderPostes(); }
-        function confirmControleur() { const c = document.getElementById('selectControleur').value; if (!c) { alert('Choisir un contrôleur'); return; } const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = true; p.controleur = c; const n = new Date(); p.heure = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); saveReservations(); } closeControleurModal(); }
+        function confirmControleur() { 
+            const c = getCurrentUser() || document.getElementById('selectControleur').value; 
+            if (!c) { alert('Choisir un contrôleur'); return; } 
+            const p = reservations[curDKey][pendingControlePoste]; 
+            if (p) { 
+                p.controlled = true; 
+                p.controleur = c; 
+                const n = new Date(); 
+                p.heure = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0'); 
+                saveReservations(); 
+            } 
+            closeControleurModal(); 
+        }
         function annulerControle() { const p = reservations[curDKey][pendingControlePoste]; if (p) { p.controlled = false; p.controleur = ''; p.heure = ''; saveReservations(); } closeControleurModal(); }
         function toggleBinomeField() { document.getElementById('binomeZone').style.display = document.getElementById('modalMode').value === 'Américaine' ? 'block' : 'none'; }
         function openModal(n, data) { curP = n; document.getElementById('modalTitle').textContent = 'Poste ' + n; document.getElementById('modalDate').textContent = curFullDate + " " + getAnnee(); document.getElementById('modalNom').value = data.nom || ''; document.getElementById('modalPrenom').value = data.prenom || ''; document.getElementById('modalHeure').value = data.heure || ''; document.getElementById('modalCreneau').value = data.creneau || ''; document.getElementById('modalMode').value = data.modeReservation || 'Individuel'; document.getElementById('modalBinome').value = data.binome || ''; toggleBinomeField(); updateControlText(); checkCardBadge(); document.getElementById('infractionsButtons').style.display = data.nom ? 'block' : 'none'; document.getElementById('posteModal').style.display = 'block'; }
