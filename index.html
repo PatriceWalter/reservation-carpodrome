@@ -126,17 +126,40 @@
 <body class="login-mode">
     <div id="loginPage">
         <h2>🎣 Connexion<br>Réservation Carpodrome 2026</h2>
-        <input type="text" id="loginID" class="login-input" value="CARPODROME" readonly tabindex="-1">
+        <label style="display:block; text-align:left; margin-bottom:5px; font-weight:600; color:#333;">👤 Identifiant :</label>
+        <select id="loginUser" class="login-input" style="cursor:pointer;">
+            <option value="">-- Choisir votre nom --</option>
+        </select>
+        <input type="text" id="loginID" class="login-input" value="CARPODROME" readonly tabindex="-1" style="display:none;">
         <input type="password" id="loginPass" class="login-input" placeholder="Mot de passe" autofocus>
         <button class="btn-login" onclick="checkLogin()">Se connecter</button>
-        <p id="errorLogin" style="color:red; margin-top:15px; font-weight:bold; display:none;">Mot de passe incorrect !</p>
+        <p id="errorLogin" style="color:red; margin-top:15px; font-weight:bold; display:none;"></p>
         <p id="firebaseStatus" style="margin-top:15px; font-size:0.85em; color:#666;"></p>
+    </div>
+    
+    <!-- Modal changement utilisateur -->
+    <div id="changeUserModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header" style="background:#ff9800;"><h2>👤 Changement d'utilisateur</h2></div>
+            <div class="modal-body" style="text-align:center;">
+                <p style="margin-bottom:20px;">Voulez-vous vraiment changer d'utilisateur ?</p>
+                <p style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:20px;">
+                    <strong id="changeUserFrom"></strong> → <strong id="changeUserTo"></strong>
+                </p>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-save" onclick="confirmChangeUser()">✅ Confirmer</button>
+                    <button class="btn" onclick="cancelChangeUser()" style="background:#eee; color:#333;">Annuler</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="mainApp">
         <div class="header">
             <span class="sync-status" id="syncStatus">🔄 Connexion...</span>
             <span class="admin-gear" onclick="openAdmin()">⚙️</span>
             <h1 id="mainTitle">🎣 Réservation Carpodrome 2026</h1>
+            <p id="currentUserDisplay" style="margin-top:10px; font-size:0.85em; opacity:0.9; cursor:pointer;" onclick="promptChangeUser()"></p>
+            <div id="onlineUsers" style="margin-top:8px; font-size:0.8em; opacity:0.85; background:rgba(255,255,255,0.15); padding:8px 12px; border-radius:8px; display:none;"></div>
         </div>
         <div class="breadcrumb">
             <div class="nav-left">
@@ -337,7 +360,36 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script>
-        (function() { const urlParams = new URLSearchParams(window.location.search); if (urlParams.get('autoconnect') === '911') { document.addEventListener('DOMContentLoaded', function() { document.getElementById('loginPass').value = '911'; setTimeout(checkLogin, 500); if (urlParams.get('from') === 'controleur') { const btn = document.createElement('button'); btn.innerHTML = '← Retour Contrôleur'; btn.style.cssText = 'position:fixed;top:15px;left:15px;z-index:9999;background:linear-gradient(135deg,#1a472a,#2d5a3d);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-size:14px;font-weight:600;cursor:pointer;'; btn.onclick = () => window.close(); document.body.appendChild(btn); } }); } })();
+        (function() { 
+            const urlParams = new URLSearchParams(window.location.search); 
+            const userParam = urlParams.get('user');
+            if (urlParams.get('autoconnect') === '911') { 
+                document.addEventListener('DOMContentLoaded', function() { 
+                    // Utiliser le user passé en paramètre ou celui sauvegardé
+                    const userToUse = userParam || localStorage.getItem('carpodromeUser') || localStorage.getItem('controleurUser');
+                    if (userToUse) {
+                        localStorage.setItem('carpodromeUser', userToUse);
+                        setTimeout(function() {
+                            const select = document.getElementById('loginUser');
+                            if (select) {
+                                for (let opt of select.options) {
+                                    if (opt.value === userToUse) { opt.selected = true; break; }
+                                }
+                            }
+                        }, 300);
+                    }
+                    document.getElementById('loginPass').value = '911'; 
+                    setTimeout(checkLogin, 600); 
+                    if (urlParams.get('from') === 'controleur') { 
+                        const btn = document.createElement('button'); 
+                        btn.innerHTML = '← Retour Contrôleur'; 
+                        btn.style.cssText = 'position:fixed;top:15px;left:15px;z-index:9999;background:linear-gradient(135deg,#1a472a,#2d5a3d);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-size:14px;font-weight:600;cursor:pointer;'; 
+                        btn.onclick = () => window.close(); 
+                        document.body.appendChild(btn); 
+                    } 
+                }); 
+            } 
+        })();
         const firebaseConfig = { apiKey: "AIzaSyBhkDGebCSuqjcENl8dZI0ZeSAkjHUUsuY", authDomain: "reservation-carpodrome.firebaseapp.com", databaseURL: "https://reservation-carpodrome-default-rtdb.europe-west1.firebasedatabase.app", projectId: "reservation-carpodrome", storageBucket: "reservation-carpodrome.firebasestorage.app", messagingSenderId: "112186411680", appId: "1:112186411680:web:13bc4892163e47a04317c5" };
         
         // Base centrale pour les infractions (synchronisation avec appli contrôleurs)
@@ -388,9 +440,129 @@
         function toggleDay(mois, jour) { if (!tempCalendarConfig.joursOuverture[mois]) tempCalendarConfig.joursOuverture[mois] = []; const index = tempCalendarConfig.joursOuverture[mois].indexOf(jour); if (index > -1) { tempCalendarConfig.joursOuverture[mois].splice(index, 1); if (tempCalendarConfig.fermeMatin && tempCalendarConfig.fermeMatin[mois]) { const mIdx = tempCalendarConfig.fermeMatin[mois].indexOf(jour); if (mIdx > -1) tempCalendarConfig.fermeMatin[mois].splice(mIdx, 1); } } else { tempCalendarConfig.joursOuverture[mois].push(jour); tempCalendarConfig.joursOuverture[mois].sort((a, b) => a - b); } renderMonthCalendar(mois); renderMonthsCheckboxes(); }
         function toggleMorning(mois, jour) { if (!tempCalendarConfig.joursOuverture[mois] || !tempCalendarConfig.joursOuverture[mois].includes(jour)) return; if (!tempCalendarConfig.fermeMatin) tempCalendarConfig.fermeMatin = {}; if (!tempCalendarConfig.fermeMatin[mois]) tempCalendarConfig.fermeMatin[mois] = []; const index = tempCalendarConfig.fermeMatin[mois].indexOf(jour); if (index > -1) tempCalendarConfig.fermeMatin[mois].splice(index, 1); else { tempCalendarConfig.fermeMatin[mois].push(jour); tempCalendarConfig.fermeMatin[mois].sort((a, b) => a - b); } renderMonthCalendar(mois); }
         function saveCalendarConfig() { calendrierConfig = JSON.parse(JSON.stringify(tempCalendarConfig)); saveCalendrierConfig(); closeCalendarManager(); showAlert('✅ Calendrier enregistré !'); renderMonths(); updateMainTitle(); }
-        function checkLogin() { if (document.getElementById('loginPass').value === "911") { if (!firebaseReady) { showAlert("⚠️ Connexion..."); return; } document.getElementById('loginPage').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.body.className = 'app-mode'; sessionStorage.setItem('logged', 'true'); setupFirebaseListeners(); renderMonths(); updateCounts(); } else { document.getElementById('errorLogin').style.display = 'block'; setTimeout(() => document.getElementById('errorLogin').style.display = 'none', 3000); } }
+        
+        function checkLogin() { 
+            const selectedUser = document.getElementById('loginUser').value;
+            if (!selectedUser) { 
+                document.getElementById('errorLogin').textContent = '⚠️ Veuillez choisir votre nom'; 
+                document.getElementById('errorLogin').style.display = 'block'; 
+                setTimeout(() => { document.getElementById('errorLogin').style.display = 'none'; }, 3000); 
+                return; 
+            }
+            if (document.getElementById('loginPass').value === "911") { 
+                if (!firebaseReady) { showAlert("⚠️ Connexion..."); return; } 
+                localStorage.setItem('carpodromeUser', selectedUser);
+                document.getElementById('loginPage').style.display = 'none'; 
+                document.getElementById('mainApp').style.display = 'block'; 
+                document.body.className = 'app-mode'; 
+                sessionStorage.setItem('logged', 'true'); 
+                document.getElementById('currentUserDisplay').textContent = '👤 ' + selectedUser;
+                setUserPresence(selectedUser);
+                listenOnlineUsers();
+                setupFirebaseListeners(); 
+                renderMonths(); 
+                updateCounts(); 
+            } else { 
+                document.getElementById('errorLogin').textContent = '❌ Mot de passe incorrect';
+                document.getElementById('errorLogin').style.display = 'block'; 
+                setTimeout(() => { document.getElementById('errorLogin').style.display = 'none'; }, 3000); 
+            } 
+        }
         document.getElementById("loginPass").addEventListener("keyup", (e) => { if (e.key === "Enter") checkLogin(); });
-        function logout() { sessionStorage.removeItem('logged'); location.reload(); }
+        function logout() { removeUserPresence(); sessionStorage.removeItem('logged'); location.reload(); }
+        
+        // ===== SYSTÈME DE PRÉSENCE =====
+        let pendingUserChange = null;
+        
+        function initLoginUserSelect() {
+            const select = document.getElementById('loginUser');
+            const savedUser = localStorage.getItem('carpodromeUser');
+            dbCentral.ref('controleurs').once('value').then(snapshot => {
+                const data = snapshot.val();
+                const liste = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+                select.innerHTML = '<option value="">-- Choisir votre nom --</option>';
+                liste.forEach(c => { if (c) select.innerHTML += '<option value="' + c + '"' + (savedUser === c ? ' selected' : '') + '>' + c + '</option>'; });
+            });
+            select.addEventListener('change', function() {
+                const savedUser = localStorage.getItem('carpodromeUser');
+                if (savedUser && this.value && this.value !== savedUser) {
+                    pendingUserChange = this.value;
+                    document.getElementById('changeUserFrom').textContent = savedUser;
+                    document.getElementById('changeUserTo').textContent = this.value;
+                    document.getElementById('changeUserModal').style.display = 'block';
+                    this.value = savedUser;
+                }
+            });
+        }
+        
+        function confirmChangeUser() {
+            if (pendingUserChange) {
+                removeUserPresence();
+                localStorage.setItem('carpodromeUser', pendingUserChange);
+                document.getElementById('loginUser').value = pendingUserChange;
+                if (sessionStorage.getItem('logged') === 'true') {
+                    setUserPresence(pendingUserChange);
+                    document.getElementById('currentUserDisplay').textContent = '👤 ' + pendingUserChange;
+                }
+                pendingUserChange = null;
+            }
+            document.getElementById('changeUserModal').style.display = 'none';
+        }
+        
+        function cancelChangeUser() { pendingUserChange = null; document.getElementById('changeUserModal').style.display = 'none'; }
+        
+        function promptChangeUser() {
+            const current = localStorage.getItem('carpodromeUser');
+            if (!current || !controleurs.length) return;
+            const newUser = prompt('Changer d\'utilisateur ?\nActuel: ' + current + '\n\nEntrez le nouveau nom:');
+            if (newUser && newUser !== current && controleurs.includes(newUser)) {
+                if (confirm('Changer de ' + current + ' à ' + newUser + ' ?')) {
+                    removeUserPresence();
+                    localStorage.setItem('carpodromeUser', newUser);
+                    setUserPresence(newUser);
+                    document.getElementById('currentUserDisplay').textContent = '👤 ' + newUser;
+                    showAlert('✅ Utilisateur changé: ' + newUser);
+                }
+            } else if (newUser && !controleurs.includes(newUser)) {
+                showAlert('❌ Utilisateur non trouvé');
+            }
+        }
+        
+        function setUserPresence(userName) {
+            if (!userName) return;
+            const presenceRef = dbCentral.ref('presence/carpodrome/' + userName);
+            const connectedRef = dbCentral.ref('.info/connected');
+            connectedRef.on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    presenceRef.set({ online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP, user: userName });
+                    presenceRef.onDisconnect().remove();
+                }
+            });
+        }
+        
+        function removeUserPresence() {
+            const userName = localStorage.getItem('carpodromeUser');
+            if (userName) dbCentral.ref('presence/carpodrome/' + userName).remove();
+        }
+        
+        function listenOnlineUsers() {
+            dbCentral.ref('presence/carpodrome').on('value', (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('onlineUsers');
+                const currentUser = localStorage.getItem('carpodromeUser');
+                if (!data) { container.style.display = 'none'; return; }
+                const users = Object.keys(data).filter(u => data[u] && data[u].online);
+                const otherUsers = users.filter(u => u !== currentUser);
+                if (otherUsers.length > 0) {
+                    container.innerHTML = '👥 Également connecté(s): ' + otherUsers.map(u => '<strong>' + u + '</strong>').join(', ');
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+        }
+        
+        function getCurrentUser() { return localStorage.getItem('carpodromeUser') || ''; }
         function accesControleur() { const t = new Date(); const annee = t.getFullYear(); const configAnnee = getAnnee(); if (annee !== configAnnee) { showAlert(`📅 Application configurée pour ${configAnnee}`); return; } const j = t.getDate(), m = t.getMonth(); const joursOuverts = getJoursOuverture()[m + 1] || []; if (!joursOuverts.includes(j)) { showAlert("🚫 Étang fermé aujourd'hui"); return; } curM = m; curMName = MOIS_NOMS[m]; showPostes(j, `${annee}-${String(m+1).padStart(2,'0')}-${String(j).padStart(2,'0')}`, t.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); }
         function checkAdminPassword() { return prompt("🔐 Mot de passe admin :") === "admin"; }
         function hideAll() { ['monthsPage', 'daysPage', 'postesPage', 'infractionsMenuPage', 'infractionsDetailPage'].forEach(id => document.getElementById(id).classList.add('hidden')); }
@@ -418,7 +590,36 @@
         function checkCardBadge() { document.getElementById('modalBadgeZone').style.display = isUserValid(document.getElementById('modalNom').value, document.getElementById('modalPrenom').value) ? 'block' : 'none'; }
         function showInfractionsMenu() { hideAll(); document.getElementById('infractionsMenuPage').classList.remove('hidden'); updateCounts(); }
         function updateCounts() { document.getElementById('countAvertissement').textContent = ((infractions.avertissements || []).length) + ' dossier(s)'; document.getElementById('countBanni').textContent = ((infractions.bannis || []).length) + ' dossier(s)'; }
-        function showInfractionList(type) { hideAll(); document.getElementById('infractionsDetailPage').classList.remove('hidden'); document.getElementById('detailTitle').textContent = type === 'avertissements' ? '⚠️ AVERTISSEMENTS' : '🚫 EXCLUSIONS'; const list = infractions[type] || []; const c = document.getElementById('detailList'); if (!list.length) { c.innerHTML = '<p style="text-align:center;color:#666;">Aucun dossier</p>'; return; } if (type === 'avertissements') { c.innerHTML = list.map((item, i) => `<div class="infraction-item avertissement"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`).join(''); } else { c.innerHTML = list.map((item, i) => { let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; let finExclusion = ''; if (item.typeExclusion === 'temporaire' && item.dateFin) { const now = new Date(); const fin = new Date(item.dateFin); if (now > fin) { typeLabel = `<span style="background:#28a745;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">✅ Expirée</span>`; finExclusion = `<br><small style="color:#28a745;">Exclusion terminée le ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } else { finExclusion = `<br><small style="color:#ff9800;">Fin de l'exclusion : ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } } let mh = ''; if (item.motifs && item.motifs.length) { mh = `<div class="motifs-list"><h4>📋 Historique des infractions :</h4>${item.motifs.map((m, j) => `<div class="motif-item"><strong>#${j+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? ' <em>(👮 ' + m.controleurSanction + ')</em>' : ''}</div>`).join('')}</div>`; } else if (item.motif) { mh = `<div class="motifs-list"><h4>📋 Motif :</h4><div class="motif-item">${item.motif}</div></div>`; } return `<div class="infraction-item banni"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong> ${typeLabel}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 Exclu le : ${item.date || ''}</small>${finExclusion}${mh}</div><div class="infraction-actions"><button class="btn btn-unban" onclick="leverExclusion(${i})">🔓 Lever</button><button class="btn btn-delete" onclick="removeBanni(${i})">🗑️</button></div></div></div>`; }).join(''); } }
+        function showInfractionList(type) { hideAll(); document.getElementById('infractionsDetailPage').classList.remove('hidden'); document.getElementById('detailTitle').textContent = type === 'avertissements' ? '⚠️ AVERTISSEMENTS' : '🚫 EXCLUSIONS'; const list = infractions[type] || []; const c = document.getElementById('detailList'); if (!list.length) { c.innerHTML = '<p style="text-align:center;color:#666;">Aucun dossier</p>'; return; } if (type === 'avertissements') { c.innerHTML = list.map((item, i) => `<div class="infraction-item avertissement"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`).join(''); } else { c.innerHTML = list.map((item, i) => { let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; let finExclusion = ''; let isExpired = false; if (item.typeExclusion === 'temporaire' && item.dateFin) { const now = new Date(); const fin = new Date(item.dateFin); isExpired = now > fin; if (isExpired) { typeLabel = `<span style="background:#28a745;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">✅ Expirée</span>`; finExclusion = `<br><small style="color:#28a745;">Exclusion terminée le ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } else { finExclusion = `<br><small style="color:#ff9800;">Fin de l'exclusion : ${new Date(item.dateFin).toLocaleDateString('fr-FR')}</small>`; } } let mh = ''; if (item.motifs && item.motifs.length) { mh = `<div class="motifs-list"><h4>📋 Historique des infractions :</h4>${item.motifs.map((m, j) => `<div class="motif-item"><strong>#${j+1}</strong> - ${m.date || ''}: ${m.motif || ''}${m.controleurSanction ? ' <em>(👮 ' + m.controleurSanction + ')</em>' : ''}</div>`).join('')}</div>`; } else if (item.motif) { mh = `<div class="motifs-list"><h4>📋 Motif :</h4><div class="motif-item">${item.motif}</div></div>`; } let actionButtons = isExpired ? `<button class="btn btn-save" onclick="validerExclusionExpiree(${i})" style="background:#28a745;">✅ Valider</button>` : `<button class="btn btn-unban" onclick="leverExclusion(${i})">🔓 Lever</button>`; actionButtons += `<button class="btn btn-delete" onclick="removeBanni(${i})">🗑️</button>`; return `<div class="infraction-item banni"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong> ${typeLabel}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 Exclu le : ${item.date || ''}</small>${finExclusion}${mh}</div><div class="infraction-actions">${actionButtons}</div></div></div>`; }).join(''); } }
+        
+        async function validerExclusionExpiree(index) { 
+            const b = infractions.bannis[index]; 
+            if (!b || b.typeExclusion !== 'temporaire') {
+                showAlert("❌ Cette exclusion n'est pas temporaire");
+                return;
+            }
+            const now = new Date();
+            const fin = new Date(b.dateFin);
+            if (now <= fin) {
+                showAlert("❌ Cette exclusion n'est pas encore expirée");
+                return;
+            }
+            if (!confirm(`Valider la fin d'exclusion de ${b.nom} ${b.prenom} et archiver ?`)) return;
+            try {
+                await dbCentral.ref('infractions/archives').push({
+                    ...b,
+                    type: 'bannissement',
+                    dateArchive: new Date().toLocaleDateString('fr-FR'),
+                    raisonArchive: 'Exclusion temporaire terminée (1 mois écoulé)'
+                });
+                infractions.bannis.splice(index, 1); 
+                await dbCentral.ref('infractions/bannis').set(infractions.bannis);
+                showInfractionList('bannis'); 
+                showAlert(`✅ Exclusion de ${b.nom} ${b.prenom} validée et archivée.<br><br>Le pêcheur peut à nouveau réserver.`); 
+            } catch(e) {
+                showAlert("❌ Erreur: " + e.message);
+            }
+        }
         async function removeAvertissement(i) { 
             if (!checkAdminPassword()) return; 
             if (!confirm('Archiver cet avertissement ?')) return;
@@ -471,7 +672,15 @@
                 showAlert("❌ Erreur: " + e.message);
             }
         }
-        function donnerAvertissement() { document.getElementById('motifInput').value = ''; document.getElementById('motifControleur').value = ''; updateMotifControleurSelect(); document.getElementById('motifModal').style.display = 'block'; }
+        function donnerAvertissement() { 
+            document.getElementById('motifInput').value = ''; 
+            const currentUser = getCurrentUser();
+            const select = document.getElementById('motifControleur');
+            select.innerHTML = '<option value="' + currentUser + '">' + currentUser + '</option>';
+            select.value = currentUser;
+            select.disabled = true;
+            document.getElementById('motifModal').style.display = 'block'; 
+        }
         function closeMotif() { document.getElementById('motifModal').style.display = 'none'; }
         // Variable pour stocker les données de la 2ème infraction
         let pendingExclusionData = null;
@@ -481,7 +690,8 @@
             const prenom = document.getElementById('modalPrenom').value.trim(); 
             const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
             const motif = document.getElementById('motifInput').value || "Non spécifié"; 
-            const controleurSanction = document.getElementById('motifControleur').value || "Non spécifié"; 
+            // Utiliser getCurrentUser() directement car le select peut être disabled
+            const controleurSanction = getCurrentUser() || document.getElementById('motifControleur').value || "Non spécifié"; 
             const dateNow = new Date().toLocaleString('fr-FR'); 
             if (!infractions.avertissements) infractions.avertissements = []; 
             if (!infractions.bannis) infractions.bannis = []; 
@@ -521,13 +731,17 @@
                 document.getElementById('exclusionMotifGroup').style.display = 'block';
                 document.getElementById('exclusionControleurGroup').style.display = 'block';
                 document.getElementById('exclusionMotif').value = '';
-                document.getElementById('exclusionControleur').value = '';
+                // Pré-remplir et verrouiller le contrôleur
+                const currentUser = getCurrentUser();
+                const selectExcl = document.getElementById('exclusionControleur');
+                selectExcl.innerHTML = '<option value="' + currentUser + '">' + currentUser + '</option>';
+                selectExcl.value = currentUser;
+                selectExcl.disabled = true;
             } 
             
             document.getElementById('exclusionInfo').innerHTML = infoText; 
             document.querySelectorAll('input[name="typeExclusion"]').forEach(r => r.checked = false); 
             document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l => l.style.borderColor = '#ddd'); 
-            updateExclusionControleurSelect(); 
             document.getElementById('exclusionModal').style.display = 'block'; 
         }
         function closeExclusion() { document.getElementById('exclusionModal').style.display = 'none'; }
@@ -537,6 +751,10 @@
             const prenom = document.getElementById('modalPrenom').value.trim(); 
             const prenomF = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
             
+            // Initialisation de sécurité
+            if (!infractions.bannis) infractions.bannis = [];
+            if (!infractions.avertissements) infractions.avertissements = [];
+            
             // Utiliser les données déjà saisies si disponibles (2ème infraction)
             let motif, controleurSanction;
             if (pendingExclusionData) {
@@ -544,7 +762,8 @@
                 controleurSanction = pendingExclusionData.controleurSanction;
             } else {
                 motif = document.getElementById('exclusionMotif').value || "Non spécifié"; 
-                controleurSanction = document.getElementById('exclusionControleur').value || "Non spécifié";
+                // Utiliser getCurrentUser() directement car le select peut être disabled
+                controleurSanction = getCurrentUser() || document.getElementById('exclusionControleur').value || "Non spécifié";
             }
             
             const typeExclusion = document.querySelector('input[name="typeExclusion"]:checked')?.value; 
@@ -593,7 +812,33 @@
         function removeValidUser(i) { if (confirm('Supprimer ?')) { validUsers.splice(i, 1); saveValidUsers(); renderAdminList(); } }
         function showAlert(msg) { document.getElementById('alertBody').innerHTML = msg; document.getElementById('alertModal').style.display = 'block'; }
         function closeAlert() { document.getElementById('alertModal').style.display = 'none'; }
-        document.addEventListener('DOMContentLoaded', () => { if (firebaseReady) { document.getElementById('firebaseStatus').innerHTML = '✅ Firebase'; document.getElementById('firebaseStatus').style.color = 'green'; } if (sessionStorage.getItem('logged') === 'true') { const check = setInterval(() => { if (firebaseReady) { clearInterval(check); document.getElementById('loginPage').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.body.className = 'app-mode'; setupFirebaseListeners(); renderMonths(); updateCounts(); } }, 100); } });
+        document.addEventListener('DOMContentLoaded', () => { 
+            initLoginUserSelect();
+            if (firebaseReady) { 
+                document.getElementById('firebaseStatus').innerHTML = '✅ Firebase'; 
+                document.getElementById('firebaseStatus').style.color = 'green'; 
+            } 
+            if (sessionStorage.getItem('logged') === 'true') { 
+                const check = setInterval(() => { 
+                    if (firebaseReady) { 
+                        clearInterval(check); 
+                        document.getElementById('loginPage').style.display = 'none'; 
+                        document.getElementById('mainApp').style.display = 'block'; 
+                        document.body.className = 'app-mode'; 
+                        const savedUser = localStorage.getItem('carpodromeUser');
+                        if (savedUser) {
+                            document.getElementById('currentUserDisplay').textContent = '👤 ' + savedUser;
+                            setUserPresence(savedUser);
+                        }
+                        listenOnlineUsers();
+                        setupFirebaseListeners(); 
+                        renderMonths(); 
+                        updateCounts(); 
+                    } 
+                }, 100); 
+            }
+            window.addEventListener('beforeunload', function() { removeUserPresence(); });
+        });
     </script>
 </body>
 </html>
