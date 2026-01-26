@@ -22,20 +22,19 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
     console.log('📬 Notification reçue en arrière-plan:', payload);
     
-    const notificationTitle = payload.notification?.title || '📋 Contrôle AAPPMA';
-    const notificationOptions = {
-        body: payload.notification?.body || 'Un contrôle a été effectué',
-        icon: '/icon-192.png',
-        badge: '/icon-72.png',
+    // Gérer les deux formats possibles
+    const notif = payload.notification || {};
+    const data = payload.data || {};
+    const title = notif.title || data.title || '📋 Contrôle AAPPMA';
+    const body = notif.body || data.body || 'Un contrôle a été effectué';
+    
+    return self.registration.showNotification(title, {
+        body: body,
         tag: 'controle-' + Date.now(),
         vibrate: [200, 100, 200],
-        data: payload.data,
-        actions: [
-            { action: 'open', title: 'Voir' }
-        ]
-    };
-    
-    self.registration.showNotification(notificationTitle, notificationOptions);
+        requireInteraction: true,
+        data: data
+    });
 });
 
 // Clic sur la notification
@@ -43,19 +42,42 @@ self.addEventListener('notificationclick', (event) => {
     console.log('🖱️ Clic sur notification:', event);
     event.notification.close();
     
-    // Ouvrir l'application
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // Si l'app est déjà ouverte, la focus
             for (const client of clientList) {
                 if (client.url.includes('patricewalter.github.io') && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Sinon ouvrir une nouvelle fenêtre
             if (clients.openWindow) {
                 return clients.openWindow('/');
             }
         })
     );
+});
+
+// Écouter les messages push directement (fallback)
+self.addEventListener('push', (event) => {
+    console.log('📨 Push reçu:', event);
+    
+    if (event.data) {
+        try {
+            const payload = event.data.json();
+            const notif = payload.notification || {};
+            const data = payload.data || {};
+            const title = notif.title || data.title || '📋 Contrôle AAPPMA';
+            const body = notif.body || data.body || 'Un contrôle a été effectué';
+            
+            event.waitUntil(
+                self.registration.showNotification(title, {
+                    body: body,
+                    tag: 'controle-' + Date.now(),
+                    vibrate: [200, 100, 200],
+                    requireInteraction: true
+                })
+            );
+        } catch (e) {
+            console.error('Erreur parsing push:', e);
+        }
+    }
 });

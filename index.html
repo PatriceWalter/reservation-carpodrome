@@ -435,14 +435,14 @@
                 // Notifications au premier plan
                 messaging.onMessage((payload) => {
                     console.log('📬 Notification reçue:', payload);
-                    const title = payload.notification?.title || '📋 Contrôle AAPPMA';
-                    const body = payload.notification?.body || 'Un contrôle a été effectué';
-                    swRegistration.showNotification(title, { body: body, vibrate: [200, 100, 200] });
+                    const notif = payload.notification || {};
+                    const data = payload.data || {};
+                    const title = notif.title || data.title || '📋 Contrôle AAPPMA';
+                    const body = notif.body || data.body || 'Un contrôle a été effectué';
+                    swRegistration.showNotification(title, { body: body, vibrate: [200, 100, 200], requireInteraction: true });
                 });
                 
-                if (Notification.permission === 'default') {
-                    await demanderPermissionNotification();
-                } else if (Notification.permission === 'granted') {
+                if (Notification.permission === 'granted') {
                     await enregistrerToken();
                 }
             } catch (error) {
@@ -466,19 +466,27 @@
         
         async function enregistrerToken() {
             try {
+                if (!messaging || !swRegistration) return;
+                
                 const token = await messaging.getToken({ 
                     vapidKey: VAPID_KEY,
                     serviceWorkerRegistration: swRegistration
                 });
                 if (token) {
                     const userName = getCurrentUser();
-                    await dbCentral.ref('fcmTokens/' + userName.replace(/[^a-zA-Z0-9]/g, '_')).set({
+                    if (!userName) return;
+                    
+                    const deviceId = navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop';
+                    const tokenKey = userName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + deviceId + '_carpo';
+                    
+                    await dbCentral.ref('fcmTokens/' + tokenKey).set({
                         token: token,
                         user: userName,
+                        device: deviceId,
                         app: 'Carpodrome',
                         lastUpdate: new Date().toISOString()
                     });
-                    console.log('✅ Token FCM enregistré pour', userName);
+                    console.log('✅ Token FCM enregistré pour', userName, '(' + deviceId + ')');
                 }
             } catch (error) {
                 console.error('❌ Erreur enregistrement token:', error);
