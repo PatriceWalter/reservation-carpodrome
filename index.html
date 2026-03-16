@@ -29,7 +29,7 @@
         .nav-left .btn-infractions { background: #e53e3e; color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
         .nav-left .btn-controleur { background: linear-gradient(135deg, #1a472a 0%, #1565c0 100%); color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
         .nav-right a { color: #dc3545; text-decoration: none; font-weight: bold; cursor: pointer; padding: 8px 12px; border-radius: 5px; }
-        .content { padding: 20px; padding-bottom: 80px; background: #f0f2e9; }
+        .content { padding: 20px; padding-bottom: 120px; background: #f0f2e9; }
         .hidden { display: none !important; }
         .months-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
         .month-card { background: white; border: 2px solid #d5d8ce; border-radius: 10px; padding: 25px 15px; text-align: center; cursor: pointer; transition: 0.3s; }
@@ -122,9 +122,8 @@
         @media (max-width: 768px) { .calendar-grid { gap: 3px; } .calendar-day { padding: 8px 3px; font-size: 0.9em; min-height: 40px; } .months-checkbox-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 480px) { .header h1 { font-size: 1em; } .months-grid, .postes-grid { grid-template-columns: repeat(2, 1fr); } .modal-content { margin: 5px; } .calendar-day { padding: 6px 2px; font-size: 0.8em; } }
     
-        .resa-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: linear-gradient(135deg,#1a472a 0%,#1565c0 100%); padding: 10px 16px 20px; justify-content: center; gap: 12px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
-        .resa-nav.visible { display: flex; }
-        .resa-nav-btn { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; flex: 1; text-align: center; max-width: 200px; font-family: inherit; }
+        .resa-nav { display: flex; flex-direction: column; align-items: center; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: linear-gradient(135deg,#1a472a 0%,#1565c0 100%); padding: 10px 16px 20px; gap: 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+                .resa-nav-btn { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; flex: 1; text-align: center; max-width: 200px; font-family: inherit; }
         .btn-back { display: none !important; }
     </style>
 </head>
@@ -386,13 +385,6 @@
                     }
                     document.getElementById('loginPass').value = '911'; 
                     setTimeout(checkLogin, 600); 
-                    if (urlParams.get('from') === 'controleur') { 
-                        const btn = document.createElement('button'); 
-                        btn.innerHTML = '← Retour Contrôleur'; 
-                        btn.style.cssText = 'position:fixed;top:15px;left:15px;z-index:9999;background:linear-gradient(135deg,#1a472a 0%,#1565c0 100%);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-size:14px;font-weight:600;cursor:pointer;'; 
-                        btn.onclick = () => window.close(); 
-                        document.body.appendChild(btn); 
-                    } 
                 }); 
             } 
         })();
@@ -1025,7 +1017,7 @@
         
         function updateResaNav() {
             var isHome = !document.getElementById('monthsPage').classList.contains('hidden');
-            if (resaNav) resaNav.classList.toggle('visible', !isHome);
+            // nav always visible
         }
         
         // Override hideAll to track history
@@ -1067,10 +1059,20 @@
             if (prev) {
                 hideAll();
                 document.getElementById(prev).classList.remove('hidden');
-                updateResaNav();
             } else {
                 showMonths();
             }
+        });
+        
+        // Retour contrôleur - affiché uniquement si venu du contrôleur
+        var urlP = new URLSearchParams(window.location.search);
+        if (urlP.get('from') === 'controleur') {
+            var ctrlBtn = document.getElementById('resaNavCtrl');
+            if (ctrlBtn) ctrlBtn.style.display = '';
+        }
+        document.getElementById('resaNavCtrl').addEventListener('click', function() {
+            window.close();
+            setTimeout(function(){ window.location.href = document.referrer || 'index.html'; }, 200);
         });
 
         window.addEventListener('beforeunload', function() { removeUserPresence(); });
@@ -1079,8 +1081,11 @@
 
     <!-- Bottom Nav Bar -->
     <div class="resa-nav" id="resaNav">
-        <button class="resa-nav-btn" id="resaNavAccueil">🏠 Accueil</button>
-        <button class="resa-nav-btn" id="resaNavRetour">← Retour</button>
+        <div style="display:flex;gap:12px;justify-content:center;width:100%;max-width:420px;">
+            <button class="resa-nav-btn" id="resaNavAccueil">🏠 Accueil</button>
+            <button class="resa-nav-btn" id="resaNavRetour">← Retour</button>
+        </div>
+        <button class="resa-nav-btn" id="resaNavCtrl" style="display:none;max-width:420px;width:100%;margin-top:4px;background:rgba(232,168,56,0.25);border-color:rgba(232,168,56,0.5);">← Retour appli contrôleur</button>
     </div>
 </body>
 </html>
