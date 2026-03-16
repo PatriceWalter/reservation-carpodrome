@@ -29,7 +29,7 @@
         .nav-left .btn-infractions { background: #e53e3e; color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
         .nav-left .btn-controleur { background: linear-gradient(135deg, #1a472a 0%, #1565c0 100%); color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
         .nav-right a { color: #dc3545; text-decoration: none; font-weight: bold; cursor: pointer; padding: 8px 12px; border-radius: 5px; }
-        .content { padding: 20px; background: #f0f2e9; }
+        .content { padding: 20px; padding-bottom: 80px; background: #f0f2e9; }
         .hidden { display: none !important; }
         .months-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
         .month-card { background: white; border: 2px solid #d5d8ce; border-radius: 10px; padding: 25px 15px; text-align: center; cursor: pointer; transition: 0.3s; }
@@ -121,6 +121,11 @@
         .admin-section h3 { color: #1a472a; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
         @media (max-width: 768px) { .calendar-grid { gap: 3px; } .calendar-day { padding: 8px 3px; font-size: 0.9em; min-height: 40px; } .months-checkbox-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 480px) { .header h1 { font-size: 1em; } .months-grid, .postes-grid { grid-template-columns: repeat(2, 1fr); } .modal-content { margin: 5px; } .calendar-day { padding: 6px 2px; font-size: 0.8em; } }
+    
+        .resa-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: linear-gradient(135deg,#1a472a 0%,#1565c0 100%); padding: 10px 16px 20px; justify-content: center; gap: 12px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        .resa-nav.visible { display: flex; }
+        .resa-nav-btn { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; flex: 1; text-align: center; max-width: 200px; font-family: inherit; }
+        .btn-back { display: none !important; }
     </style>
 </head>
 <body class="login-mode">
@@ -1013,8 +1018,69 @@
                     } 
                 }, 100); 
             }
-            window.addEventListener('beforeunload', function() { removeUserPresence(); });
+            
+        // ===== BOTTOM NAV BAR =====
+        var resaPageHistory = [];
+        var resaNav = document.getElementById('resaNav');
+        
+        function updateResaNav() {
+            var isHome = !document.getElementById('monthsPage').classList.contains('hidden');
+            if (resaNav) resaNav.classList.toggle('visible', !isHome);
+        }
+        
+        // Override hideAll to track history
+        var _originalHideAll = hideAll;
+        function getVisiblePage() {
+            var pages = ['monthsPage', 'daysPage', 'postesPage', 'infractionsMenuPage', 'infractionsDetailPage'];
+            for (var i = 0; i < pages.length; i++) {
+                if (!document.getElementById(pages[i]).classList.contains('hidden')) return pages[i];
+            }
+            return 'monthsPage';
+        }
+        
+        // Wrap navigation functions to track history
+        var _showMonths = showMonths;
+        showMonths = function() { resaPageHistory = []; _showMonths(); updateResaNav(); };
+        
+        var _showDays = showDays;
+        showDays = function(m, name) { resaPageHistory.push('monthsPage'); _showDays(m, name); updateResaNav(); };
+        
+        var _showPostes = showPostes;
+        showPostes = function(j, key, dateFull) { resaPageHistory.push(getVisiblePage()); _showPostes(j, key, dateFull); updateResaNav(); };
+        
+        var _showInfractionsMenu = showInfractionsMenu;
+        showInfractionsMenu = function() { resaPageHistory.push(getVisiblePage()); _showInfractionsMenu(); updateResaNav(); };
+        
+        var _showInfractionList = showInfractionList;
+        showInfractionList = function(type) { resaPageHistory.push('infractionsMenuPage'); _showInfractionList(type); updateResaNav(); };
+        
+        var _backToDays = backToDays;
+        backToDays = function() { resaPageHistory.pop(); _backToDays(); updateResaNav(); };
+        
+        document.getElementById('resaNavAccueil').addEventListener('click', function() {
+            resaPageHistory = [];
+            showMonths();
+        });
+        
+        document.getElementById('resaNavRetour').addEventListener('click', function() {
+            var prev = resaPageHistory.pop();
+            if (prev) {
+                hideAll();
+                document.getElementById(prev).classList.remove('hidden');
+                updateResaNav();
+            } else {
+                showMonths();
+            }
+        });
+
+        window.addEventListener('beforeunload', function() { removeUserPresence(); });
         });
     </script>
+
+    <!-- Bottom Nav Bar -->
+    <div class="resa-nav" id="resaNav">
+        <button class="resa-nav-btn" id="resaNavAccueil">🏠 Accueil</button>
+        <button class="resa-nav-btn" id="resaNavRetour">← Retour</button>
+    </div>
 </body>
 </html>
