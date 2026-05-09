@@ -507,23 +507,51 @@
         function setupFirebaseListeners() { 
             if (!firebaseReady) return; 
             database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); 
-            database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (document.getElementById('postesPage').style.display === 'block') renderPostes(); }); 
             
-            // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE ET Trous "undefined" (Sparse arrays Firebase)
+            database.ref('reservations').on('value', (snap) => { 
+                reservations = snap.val() || {}; 
+                if (document.getElementById('postesPage').style.display === 'block') renderPostes(); 
+            }); 
+            
+            // FILTRE DE SÉCURITÉ ANTI-TROUS POUR LES INFRACTIONS
             dbCentral.ref('infractions').on('value', (snapshot) => { 
                 const data = snapshot.val() || {}; 
                 infractions = {
-                    avertissements: Array.isArray(data.avertissements) ? data.avertissements : Object.values(data.avertissements || {}),
-                    bannis: Array.isArray(data.bannis) ? data.bannis : Object.values(data.bannis || {}),
-                    archives: Array.isArray(data.archives) ? data.archives : Object.values(data.archives || {})
+                    avertissements: (Array.isArray(data.avertissements) ? data.avertissements : Object.values(data.avertissements || {})).filter(x => x && x.nom),
+                    bannis: (Array.isArray(data.bannis) ? data.bannis : Object.values(data.bannis || {})).filter(x => x && x.nom),
+                    archives: (Array.isArray(data.archives) ? data.archives : Object.values(data.archives || {})).filter(x => x && x.nom)
                 };
                 updateCounts(); 
                 console.log('📡 Infractions synchronisées et sécurisées'); 
             }); 
             
-            dbCentral.ref('validUsers').on('value', (snap) => { validUsers = snap.val() ? Object.values(snap.val()) : []; if (document.getElementById('postesPage').style.display === 'block') renderPostes(); console.log('🪪 Cartes valides synchronisées'); }); 
-            dbCentral.ref('controleurs').on('value', (snap) => { controleurs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : []; updateControleurSelect(); updateMotifControleurSelect(); updateExclusionControleurSelect(); }); 
-            database.ref('calendrierConfig').on('value', (snapshot) => { const data = snapshot.val(); if (data) { calendrierConfig = data; } else { calendrierConfig = { annee: 2026, joursOuverture: DEFAULT_JOURS_OUVERTURE, fermeMatin: DEFAULT_FERME_MATIN }; saveCalendrierConfig(); } updateMainTitle(); renderMonths(); }); 
+            // FILTRE DE SÉCURITÉ ANTI-TROUS POUR LES PÊCHEURS VALIDES (Le correctif du bug est ici !)
+            dbCentral.ref('validUsers').on('value', (snap) => { 
+                const data = snap.val();
+                validUsers = data ? Object.values(data).filter(u => u && u.nom) : []; 
+                if (document.getElementById('postesPage').style.display === 'block') renderPostes(); 
+                console.log('🪪 Cartes valides synchronisées et sécurisées'); 
+            }); 
+            
+            dbCentral.ref('controleurs').on('value', (snap) => { 
+                const data = snap.val();
+                controleurs = data ? Object.values(data).filter(c => c && typeof c === 'string') : []; 
+                updateControleurSelect(); 
+                updateMotifControleurSelect(); 
+                updateExclusionControleurSelect(); 
+            }); 
+            
+            database.ref('calendrierConfig').on('value', (snapshot) => { 
+                const data = snapshot.val(); 
+                if (data) { 
+                    calendrierConfig = data; 
+                } else { 
+                    calendrierConfig = { annee: 2026, joursOuverture: DEFAULT_JOURS_OUVERTURE, fermeMatin: DEFAULT_FERME_MATIN }; 
+                    saveCalendrierConfig(); 
+                } 
+                updateMainTitle(); 
+                renderMonths(); 
+            }); 
         }
         
         function saveReservations() { if (firebaseReady) database.ref('reservations').set(reservations); }
@@ -842,7 +870,7 @@
         
         function closeModal() { document.getElementById('posteModal').style.display = 'none'; }
         
-        // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE ET GESTION DES ERREURS
+        // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE
         function saveModal() { 
             try {
                 let nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
@@ -891,7 +919,12 @@
         
         function deleteModal() { if (reservations[curDKey] && reservations[curDKey][curP]) { delete reservations[curDKey][curP]; saveReservations(); renderPostes(); } closeModal(); }
         function updateControlText() { const heure = document.getElementById('modalHeure').value; if (heure) { document.getElementById('controlStatusText').textContent = "✅ Contrôlé à " + heure; document.getElementById('controlStatusText').style.color = "#17a2b8"; } else { document.getElementById('controlStatusText').textContent = "Non contrôlé"; document.getElementById('controlStatusText').style.color = "#666"; } }
-        function isUserValid(nom, prenom) { return validUsers.some(u => u.nom && u.prenom && u.nom.toLowerCase() === (nom || '').trim().toLowerCase() && u.prenom.toLowerCase() === (prenom || '').trim().toLowerCase()); }
+        
+        // LE FILTRE ANTI CRASH SE TROUVE ICI ET À LA RÉCEPTION DES DONNÉES
+        function isUserValid(nom, prenom) { 
+            return validUsers.some(u => u && u.nom && u.prenom && u.nom.toLowerCase() === (nom || '').trim().toLowerCase() && u.prenom.toLowerCase() === (prenom || '').trim().toLowerCase()); 
+        }
+        
         function checkCardBadge() { document.getElementById('modalBadgeZone').style.display = isUserValid(document.getElementById('modalNom').value, document.getElementById('modalPrenom').value) ? 'block' : 'none'; }
         
         function showInfractionsMenu() { 
