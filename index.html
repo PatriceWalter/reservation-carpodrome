@@ -509,7 +509,7 @@
             database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); 
             database.ref('reservations').on('value', (snap) => { reservations = snap.val() || {}; if (document.getElementById('postesPage').style.display === 'block') renderPostes(); }); 
             
-            // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE (Maintien de la structure Array)
+            // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE ET Trous "undefined" (Sparse arrays Firebase)
             dbCentral.ref('infractions').on('value', (snapshot) => { 
                 const data = snapshot.val() || {}; 
                 infractions = {
@@ -852,7 +852,7 @@
                 prenom = prenom.charAt(0).toUpperCase() + prenom.slice(1).toLowerCase(); 
                 
                 const banni = (infractions.bannis || []).find(b => { 
-                    if (!b.nom || b.nom.toUpperCase() !== nom || !b.prenom || b.prenom.toLowerCase() !== prenom.toLowerCase()) return false; 
+                    if (!b || !b.nom || b.nom.toUpperCase() !== nom || !b.prenom || b.prenom.toLowerCase() !== prenom.toLowerCase()) return false; 
                     if (b.typeExclusion === 'temporaire' && b.dateFin) { 
                         const now = new Date(); 
                         const fin = new Date(b.dateFin); 
@@ -902,8 +902,8 @@
         }
         
         function updateCounts() { 
-            document.getElementById('countAvertissement').textContent = ((infractions.avertissements || []).length) + ' dossier(s)'; 
-            document.getElementById('countBanni').textContent = ((infractions.bannis || []).length) + ' dossier(s)'; 
+            document.getElementById('countAvertissement').textContent = ((infractions.avertissements || []).filter(a => a && a.nom).length) + ' dossier(s)'; 
+            document.getElementById('countBanni').textContent = ((infractions.bannis || []).filter(b => b && b.nom).length) + ' dossier(s)'; 
         }
         
         function showInfractionList(type) { 
@@ -917,9 +917,13 @@
             if (!list.length) { c.innerHTML = '<p style="text-align:center;color:#666;">Aucun dossier</p>'; return; } 
             
             if (type === 'avertissements') { 
-                c.innerHTML = list.map((item, i) => `<div class="infraction-item ${item.archived ? 'archive' : 'avertissement'}"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.archived ? '<span class="archive-badge">📁 Archivé</span>' : ''}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`).join(''); 
+                c.innerHTML = list.map((item, i) => {
+                    if (!item || !item.nom) return '';
+                    return `<div class="infraction-item ${item.archived ? 'archive' : 'avertissement'}"><div class="infraction-header"><div class="infraction-info"><strong>${(item.nom || 'N/A').toUpperCase()} ${item.prenom || ''}</strong>${item.archived ? '<span class="archive-badge">📁 Archivé</span>' : ''}${item.controleurSanction ? '<span class="controleur-badge">👮 ' + item.controleurSanction + '</span>' : ''}<br><small>📅 ${item.date || ''}</small><br><small>📝 ${item.motif || ''}</small></div><div class="infraction-actions"><button class="btn btn-delete" onclick="removeAvertissement(${i})">🗑️</button></div></div></div>`;
+                }).join(''); 
             } else { 
                 c.innerHTML = list.map((item, i) => { 
+                    if (!item || !item.nom) return '';
                     let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; 
                     let finExclusion = ''; let isExpired = false; 
                     if (item.typeExclusion === 'temporaire' && item.dateFin) { 
@@ -951,7 +955,7 @@
                 if (!Array.isArray(currentBannis)) currentBannis = Object.values(currentBannis);
                 
                 const b = currentBannis[index]; 
-                if (!b || b.typeExclusion !== 'temporaire') { showAlert("❌ Cette exclusion n'est pas temporaire"); return; }
+                if (!b || !b.nom) { showAlert("❌ Dossier introuvable ou corrompu"); return; }
                 const now = new Date(); const fin = new Date(b.dateFin);
                 if (now <= fin) { showAlert("❌ Cette exclusion n'est pas encore expirée"); return; }
                 if (!confirm(`Valider la fin d'exclusion de ${b.nom} ${b.prenom} et archiver ?`)) return;
@@ -975,7 +979,7 @@
                 if (!Array.isArray(currentAvert)) currentAvert = Object.values(currentAvert);
                 
                 const avert = currentAvert[i];
-                if (!avert) { showAlert("❌ Avertissement non trouvé"); return; }
+                if (!avert || !avert.nom) { showAlert("❌ Dossier introuvable ou corrompu"); return; }
                 
                 await dbCentral.ref('infractions/archives').push({
                     ...avert, type: 'avertissement', dateArchive: new Date().toLocaleDateString('fr-FR'), raisonArchive: 'Archivé manuellement'
@@ -1011,7 +1015,7 @@
                 if (!Array.isArray(currentBannis)) currentBannis = Object.values(currentBannis);
                 
                 const b = currentBannis[i]; 
-                if (!b) { showAlert("❌ Exclusion non trouvée"); return; }
+                if (!b || !b.nom) { showAlert("❌ Dossier introuvable ou corrompu"); return; }
                 
                 await dbCentral.ref('infractions/archives').push({
                     ...b, type: 'bannissement', dateArchive: new Date().toLocaleDateString('fr-FR'), raisonArchive: 'Exclusion levée'
@@ -1052,7 +1056,7 @@
                 let currentAvert = snap.val() || [];
                 if (!Array.isArray(currentAvert)) currentAvert = Object.values(currentAvert);
                 
-                const avertExistants = currentAvert.filter(a => a && (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
+                const avertExistants = currentAvert.filter(a => a && a.nom && a.prenom && (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
                 
                 if (avertExistants.length >= 1) { 
                     pendingExclusionData = { motif, controleurSanction };
@@ -1132,7 +1136,7 @@
                 let currentAvert = avertSnap.val() || []; if (!Array.isArray(currentAvert)) currentAvert = Object.values(currentAvert);
                 let currentBannis = bannisSnap.val() || []; if (!Array.isArray(currentBannis)) currentBannis = Object.values(currentBannis);
                 
-                const avertExistants = currentAvert.filter(a => a && (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived);
+                const avertExistants = currentAvert.filter(a => a && a.nom && a.prenom && (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived);
                 let motifs = avertExistants.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); 
                 motifs.push({ motif, date: dateNow, controleurSanction }); 
                 
@@ -1145,7 +1149,7 @@
                 
                 const newBanni = { id: Date.now().toString(), nom, prenom: prenomF, motifs, motif, controleurSanction, date: dateNow, typeExclusion, dateFin };
                 currentBannis.push(newBanni);
-                const newAvert = currentAvert.filter(a => !a || (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived);
+                const newAvert = currentAvert.filter(a => !a || !a.nom || !a.prenom || (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived);
                 
                 await dbCentral.ref('infractions/bannis').set(currentBannis);
                 await dbCentral.ref('infractions/avertissements').set(newAvert);
@@ -1166,8 +1170,8 @@
         
         function checkInfo(nom, prenom) { 
             const fn = (nom + ' ' + prenom).toLowerCase(); 
-            const avert = (infractions.avertissements || []).filter(a => (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
-            const banni = (infractions.bannis || []).find(b => (b.nom + ' ' + b.prenom).toLowerCase() === fn); 
+            const avert = (infractions.avertissements || []).filter(a => a && a.nom && a.prenom && (a.nom + ' ' + a.prenom).toLowerCase() === fn && !a.archived); 
+            const banni = (infractions.bannis || []).find(b => b && b.nom && b.prenom && (b.nom + ' ' + b.prenom).toLowerCase() === fn); 
             const isV = isUserValid(nom, prenom); 
             let h = `<div style="text-align:left;"><h3 style="text-align:center;">${nom.toUpperCase()} ${prenom}</h3>`; 
             h += `<p>${isV ? '🪪 Carte valide' : '❌ Pas de carte'}</p>`; 
