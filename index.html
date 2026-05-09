@@ -11,7 +11,7 @@
         body.app-mode { display: block; padding: 10px; background: #f0f2e9; padding-bottom: 90px; }
         
         /* OPTIMISATION MOBILE : Rend les clics instantanés (supprime le délai de 300ms) */
-        .month-card, .day-card, .poste-box, .calendar-day, .btn, .resa-nav-btn, .nav-left a, .nav-left button, .nav-right a, .control-zone {
+        .month-card, .day-card, .poste-box, .calendar-day, .btn, .resa-nav-btn, .nav-left a, .nav-left button, .nav-right a, .control-zone, .exclusion-type-option {
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
@@ -107,6 +107,14 @@
         .info-motifs h4 { margin-bottom: 8px; color: #856404; }
         .info-motif-item { padding: 5px 0; border-bottom: 1px solid #ffeeba; font-size: 0.9em; }
         .info-motif-item:last-child { border-bottom: none; }
+        
+        /* STYLE POUR LE NOUVEAU CHOIX D'EXCLUSION MULTIPLE */
+        .exclusion-type-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .exclusion-type-option { padding: 15px; border: 2px solid #ddd; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.3s; background: #f8f9fa; }
+        .exclusion-type-option:hover { border-color: #dc3545; }
+        .exclusion-type-option.selected { border-color: #dc3545; background: #ffebee; }
+        .exclusion-type-option .title { font-weight: 700; color: #333; font-size:15px; }
+
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
         .calendar-header { background: linear-gradient(135deg, #1a472a 0%, #1565c0 100%); color: white; padding: 8px; text-align: center; font-weight: bold; font-size: 0.8em; border-radius: 5px; }
         .calendar-day { padding: 10px 5px; text-align: center; border: 2px solid #d5d8ce; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -330,7 +338,7 @@
     </div>
     
     <div id="exclusionModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header" style="background:#dc3545;"><h2>🚫 Exclusion</h2></div>
             <div class="modal-body">
                 <div id="exclusionInfo" style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #ffc107;"></div>
@@ -344,19 +352,29 @@
                     <label>Motif de l'exclusion :</label>
                     <input type="text" id="exclusionMotif" placeholder="Ex: Non respect du règlement...">
                 </div>
-                <label style="margin-top:15px;">Type d'exclusion :</label>
-                <div style="display:flex; gap:15px; margin:15px 0;">
-                    <label style="display:flex; align-items:center; gap:8px; padding:15px; background:#f8f9fa; border-radius:8px; cursor:pointer; flex:1; border:2px solid #ddd;" onclick="this.querySelector('input').checked=true; document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l=>l.style.borderColor='#ddd'); this.style.borderColor='#dc3545';">
-                        <input type="radio" name="typeExclusion" value="temporaire" style="width:20px;height:20px;">
-                        <span><strong>⏱️ Temporaire</strong><br><small>1 mois</small></span>
-                    </label>
-                    <label style="display:flex; align-items:center; gap:8px; padding:15px; background:#f8f9fa; border-radius:8px; cursor:pointer; flex:1; border:2px solid #ddd;" onclick="this.querySelector('input').checked=true; document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l=>l.style.borderColor='#ddd'); this.style.borderColor='#dc3545';">
-                        <input type="radio" name="typeExclusion" value="definitive" style="width:20px;height:20px;">
-                        <span><strong>🚫 Définitive</strong><br><small>Sans limite</small></span>
-                    </label>
+                
+                <p style="font-weight:600; margin-bottom:15px; margin-top:15px;">Choisissez la durée de l'exclusion :</p>
+                <div class="exclusion-type-choice">
+                    <div class="exclusion-type-option" id="opt-excl-temp1" onclick="selectExclusionType('temp_1')">
+                        <div class="icon" style="font-size:24px; margin-bottom:5px;">⏱️</div>
+                        <div class="title">1 Mois</div>
+                    </div>
+                    <div class="exclusion-type-option" id="opt-excl-temp2" onclick="selectExclusionType('temp_2')">
+                        <div class="icon" style="font-size:24px; margin-bottom:5px;">⏱️</div>
+                        <div class="title">2 Mois</div>
+                    </div>
+                    <div class="exclusion-type-option" id="opt-excl-temp3" onclick="selectExclusionType('temp_3')">
+                        <div class="icon" style="font-size:24px; margin-bottom:5px;">⏱️</div>
+                        <div class="title">3 Mois</div>
+                    </div>
+                    <div class="exclusion-type-option" id="opt-excl-def" onclick="selectExclusionType('definitive')">
+                        <div class="icon" style="font-size:24px; margin-bottom:5px;">🚫</div>
+                        <div class="title">Définitive</div>
+                    </div>
                 </div>
+                
                 <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button class="btn" onclick="confirmerExclusion()" style="background:#dc3545; color:white; flex:1;">🚫 Confirmer l'exclusion</button>
+                    <button class="btn" id="btnConfirmExclusion" onclick="confirmerExclusion()" style="background:#dc3545; color:white; flex:1;" disabled>🚫 Confirmer l'exclusion</button>
                     <button class="btn" onclick="closeExclusion()" style="background:#eee; color:#333;">Annuler</button>
                 </div>
             </div>
@@ -366,7 +384,7 @@
     <div id="alertModal" class="alert-modal">
         <div class="alert-content">
             <div id="alertHeader" style="background:linear-gradient(135deg, #1a472a 0%, #1565c0 100%); color:white; padding:15px; text-align:center;"><h3>INFO</h3></div>
-            <div id="alertBody" style="padding:20px;"></div>
+            <div id="alertBody" class="alert-body" style="padding:20px;"></div>
             <div style="text-align:center; padding-bottom:20px;"><button class="btn btn-save" onclick="closeAlert()">OK</button></div>
         </div>
     </div>
@@ -387,7 +405,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="resa-nav" id="resaNav">
         <button class="resa-nav-btn" id="resaNavAccueil" onclick="showMonths()">🏠 Accueil</button>
         <button class="resa-nav-btn" id="resaNavRetour" onclick="goBackHistory()">← Retour</button>
@@ -399,8 +417,10 @@
     <script>
         (function() { 
             const urlParams = new URLSearchParams(window.location.search); 
+            const autoconnect = urlParams.get('autoconnect'); 
+            const fromControleur = urlParams.get('from') === 'controleur'; 
             const userParam = urlParams.get('user');
-            if (urlParams.get('autoconnect') === '911') { 
+            if (autoconnect === '911') { 
                 document.addEventListener('DOMContentLoaded', function() { 
                     const userToUse = userParam || localStorage.getItem('carpodromeUser') || localStorage.getItem('controleurUser');
                     if (userToUse) {
@@ -419,6 +439,7 @@
                 }); 
             } 
         })();
+        
         const firebaseConfig = { apiKey: "AIzaSyBhkDGebCSuqjcENl8dZI0ZeSAkjHUUsuY", authDomain: "reservation-carpodrome.firebaseapp.com", databaseURL: "https://reservation-carpodrome-default-rtdb.europe-west1.firebasedatabase.app", projectId: "reservation-carpodrome", storageBucket: "reservation-carpodrome.firebasestorage.app", messagingSenderId: "112186411680", appId: "1:112186411680:web:13bc4892163e47a04317c5" };
         
         // Base centrale pour les infractions (synchronisation avec appli contrôleurs)
@@ -431,6 +452,7 @@
             messagingSenderId: "780831512988",
             appId: "1:780831512988:web:f0f263cfaf9abd18269059"
         };
+        
         let app, database, appCentral, dbCentral, firebaseReady = false;
         try { 
             app = firebase.initializeApp(firebaseConfig); 
@@ -438,9 +460,8 @@
             appCentral = firebase.initializeApp(firebaseConfigCentral, 'central');
             dbCentral = firebase.database(appCentral);
             firebaseReady = true; 
-        } catch (e) { console.error("Firebase:", e); }
+        } catch (error) { console.error("❌ Firebase:", error); }
         
-        // ===== NOTIFICATIONS TELEGRAM =====
         const TELEGRAM_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxn4ymLy30fj78YW67XyiXecKaV-gb3HfLlMqHojcGSbufhiUUFe2APmuX7hwKV7oRk/exec";
         
         async function envoyerNotificationTelegram(message) {
@@ -481,6 +502,9 @@
         let pendingControlePoste = null, curM, curMName, curDKey, curP, curFullDate, pendingSanctionType;
         let tempCalendarConfig = {};
         
+        let pendingExclusionData = null, selectedExclusionType = null;
+        let infractionsListenerSetup = false;
+        
         let resaPageHistory = [];
 
         function getVisiblePage() {
@@ -504,7 +528,7 @@
             updateCounts();
         }
 
-        function setupFirebaseListeners() { 
+        async function setupFirebaseListeners() { 
             if (!firebaseReady) return; 
             database.ref(".info/connected").on("value", (snap) => { const s = document.getElementById('syncStatus'); s.textContent = snap.val() ? "🟢 En ligne" : "🔴 Hors ligne"; s.className = "sync-status " + (snap.val() ? "online" : "offline"); }); 
             
@@ -513,6 +537,36 @@
                 if (document.getElementById('postesPage').style.display === 'block') renderPostes(); 
             }); 
             
+            // Migration automatique 1 mois -> 3 mois pour l'existant
+            if (!infractionsListenerSetup) {
+                try {
+                    const banSnap = await dbCentral.ref('infractions/bannis').once('value');
+                    const dataBannis = banSnap.val();
+                    if (dataBannis) {
+                        let bannisArr = Array.isArray(dataBannis) ? dataBannis : Object.values(dataBannis);
+                        let needsUpdate = false;
+                        
+                        bannisArr.forEach(b => {
+                            if (b && b.nom && b.typeExclusion === 'temporaire' && !b.dureeMois) {
+                                b.dureeMois = 3;
+                                if (b.dateFin) {
+                                    let d = new Date(b.dateFin);
+                                    d.setMonth(d.getMonth() + 2);
+                                    b.dateFin = d.toISOString();
+                                }
+                                needsUpdate = true;
+                            }
+                        });
+                        
+                        if (needsUpdate) {
+                            await dbCentral.ref('infractions/bannis').set(bannisArr);
+                            console.log('🔄 Migration automatique : anciens bannissements mis à 3 mois.');
+                        }
+                    }
+                } catch(e) { console.error("Erreur lors de la migration:", e); }
+                infractionsListenerSetup = true;
+            }
+
             // FILTRE DE SÉCURITÉ ANTI-TROUS POUR LES INFRACTIONS
             dbCentral.ref('infractions').on('value', (snapshot) => { 
                 const data = snapshot.val() || {}; 
@@ -525,7 +579,7 @@
                 console.log('📡 Infractions synchronisées et sécurisées'); 
             }); 
             
-            // FILTRE DE SÉCURITÉ ANTI-TROUS POUR LES PÊCHEURS VALIDES (Le correctif du bug est ici !)
+            // FILTRE DE SÉCURITÉ ANTI-TROUS POUR LES PÊCHEURS VALIDES
             dbCentral.ref('validUsers').on('value', (snap) => { 
                 const data = snap.val();
                 validUsers = data ? Object.values(data).filter(u => u && u.nom) : []; 
@@ -605,7 +659,6 @@
         document.getElementById("loginPass").addEventListener("keyup", (e) => { if (e.key === "Enter") checkLogin(); });
         function logout() { removeUserPresence(); sessionStorage.removeItem('logged'); location.reload(); }
         
-        // ===== SYSTÈME DE PRÉSENCE =====
         let pendingUserChange = null;
         
         function initLoginUserSelect() {
@@ -870,7 +923,6 @@
         
         function closeModal() { document.getElementById('posteModal').style.display = 'none'; }
         
-        // CORRECTION CRITIQUE DU BUG DE SAUVEGARDE
         function saveModal() { 
             try {
                 let nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
@@ -920,7 +972,6 @@
         function deleteModal() { if (reservations[curDKey] && reservations[curDKey][curP]) { delete reservations[curDKey][curP]; saveReservations(); renderPostes(); } closeModal(); }
         function updateControlText() { const heure = document.getElementById('modalHeure').value; if (heure) { document.getElementById('controlStatusText').textContent = "✅ Contrôlé à " + heure; document.getElementById('controlStatusText').style.color = "#17a2b8"; } else { document.getElementById('controlStatusText').textContent = "Non contrôlé"; document.getElementById('controlStatusText').style.color = "#666"; } }
         
-        // LE FILTRE ANTI CRASH SE TROUVE ICI ET À LA RÉCEPTION DES DONNÉES
         function isUserValid(nom, prenom) { 
             return validUsers.some(u => u && u.nom && u.prenom && u.nom.toLowerCase() === (nom || '').trim().toLowerCase() && u.prenom.toLowerCase() === (prenom || '').trim().toLowerCase()); 
         }
@@ -957,7 +1008,8 @@
             } else { 
                 c.innerHTML = list.map((item, i) => { 
                     if (!item || !item.nom) return '';
-                    let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; 
+                    let dureeText = item.dureeMois ? item.dureeMois + ' mois' : '3 mois';
+                    let typeLabel = item.typeExclusion === 'temporaire' ? `<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">⏱️ Temporaire (${dureeText})</span>` : `<span style="background:#dc3545;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">🚫 Définitive</span>`; 
                     let finExclusion = ''; let isExpired = false; 
                     if (item.typeExclusion === 'temporaire' && item.dateFin) { 
                         const now = new Date(); const fin = new Date(item.dateFin); isExpired = now > fin; 
@@ -1073,8 +1125,6 @@
         
         function closeMotif() { document.getElementById('motifModal').style.display = 'none'; }
         
-        let pendingExclusionData = null;
-        
         async function confirmerAvertissement() { 
             const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
             const prenom = document.getElementById('modalPrenom').value.trim(); 
@@ -1111,6 +1161,19 @@
             } catch(e) { console.error('Erreur:', e); showAlert('❌ Erreur: ' + e.message); }
         }
         
+        function selectExclusionType(type) { 
+            selectedExclusionType = type; 
+            document.querySelectorAll('.exclusion-type-option').forEach(o => o.classList.remove('selected')); 
+            
+            let id = 'opt-excl-def';
+            if (type === 'temp_1') id = 'opt-excl-temp1';
+            if (type === 'temp_2') id = 'opt-excl-temp2';
+            if (type === 'temp_3') id = 'opt-excl-temp3';
+            
+            document.getElementById(id).classList.add('selected'); 
+            document.getElementById('btnConfirmExclusion').disabled = false; 
+        }
+
         function ouvrirChoixExclusion(avertissementExistant = null) { 
             const nom = document.getElementById('modalNom').value.trim().toUpperCase(); 
             const prenom = document.getElementById('modalPrenom').value.trim(); 
@@ -1118,7 +1181,7 @@
             let infoText = ''; 
             
             if (avertissementExistant && pendingExclusionData) { 
-                infoText = `<strong>⚠️ 2ème INFRACTION détectée !</strong><br><br>📜 Selon le règlement, ${nom} ${prenomF} a déjà reçu un avertissement le ${avertissementExistant.date}.<br>Motif précédent : "${avertissementExistant.motif}"<br><br>📝 <strong>Nouvelle infraction :</strong> ${pendingExclusionData.motif}<br>👮 <strong>Constatée par :</strong> ${pendingExclusionData.controleurSanction}<br><br>👉 <strong>Choisissez uniquement le type d'exclusion :</strong>`; 
+                infoText = `<strong>⚠️ 2ème INFRACTION détectée !</strong><br><br>📜 Selon le règlement, ${nom} ${prenomF} a déjà reçu un avertissement le ${avertissementExistant.date}.<br>Motif précédent : "${avertissementExistant.motif}"<br><br>📝 <strong>Nouvelle infraction :</strong> ${pendingExclusionData.motif}<br>👮 <strong>Constatée par :</strong> ${pendingExclusionData.controleurSanction}<br><br>👉 <strong>Choisissez uniquement la durée de l'exclusion :</strong>`; 
                 document.getElementById('exclusionMotifGroup').style.display = 'none';
                 document.getElementById('exclusionControleurGroup').style.display = 'none';
             } else { 
@@ -1135,8 +1198,8 @@
             } 
             
             document.getElementById('exclusionInfo').innerHTML = infoText; 
-            document.querySelectorAll('input[name="typeExclusion"]').forEach(r => r.checked = false); 
-            document.querySelectorAll('#exclusionModal label[style*=flex]').forEach(l => l.style.borderColor = '#ddd'); 
+            document.querySelectorAll('.exclusion-type-option').forEach(o => o.classList.remove('selected')); 
+            document.getElementById('btnConfirmExclusion').disabled = true; 
             document.getElementById('exclusionModal').style.display = 'block'; 
         }
         
@@ -1157,8 +1220,7 @@
                 controleurSanction = getCurrentUser() || document.getElementById('exclusionControleur').value || "Non spécifié";
             }
             
-            const typeExclusion = document.querySelector('input[name="typeExclusion"]:checked')?.value; 
-            if (!typeExclusion) { alert('Veuillez choisir le type d\'exclusion (temporaire ou définitive)'); return; } 
+            if (!selectedExclusionType) { alert('Veuillez choisir la durée de l\'exclusion'); return; } 
             
             const dateNow = new Date().toLocaleString('fr-FR'); 
             const fn = (nom + ' ' + prenomF).toLowerCase(); 
@@ -1173,14 +1235,23 @@
                 let motifs = avertExistants.map(a => ({ motif: a.motif, date: a.date, controleurSanction: a.controleurSanction })); 
                 motifs.push({ motif, date: dateNow, controleurSanction }); 
                 
+                let dureeMois = null;
+                let finalType = selectedExclusionType;
+                if (selectedExclusionType.startsWith('temp_')) {
+                    dureeMois = parseInt(selectedExclusionType.split('_')[1]);
+                    finalType = 'temporaire';
+                }
+
                 let dateFin = null; 
-                if (typeExclusion === 'temporaire') { dateFin = new Date(); dateFin.setMonth(dateFin.getMonth() + 1); dateFin = dateFin.toISOString(); } 
+                if (finalType === 'temporaire') { 
+                    dateFin = new Date(); dateFin.setMonth(dateFin.getMonth() + dureeMois); dateFin = dateFin.toISOString(); 
+                } 
                 
                 for (const a of avertExistants) {
                     await dbCentral.ref('infractions/archives').push({ ...a, type: 'avertissement', dateArchive: new Date().toLocaleDateString('fr-FR'), raisonArchive: 'Converti en exclusion' });
                 }
                 
-                const newBanni = { id: Date.now().toString(), nom, prenom: prenomF, motifs, motif, controleurSanction, date: dateNow, typeExclusion, dateFin };
+                const newBanni = { id: Date.now().toString(), nom, prenom: prenomF, motifs, motif, controleurSanction, date: dateNow, typeExclusion: finalType, dureeMois: dureeMois, dateFin };
                 currentBannis.push(newBanni);
                 const newAvert = currentAvert.filter(a => !a || !a.nom || !a.prenom || (a.nom + ' ' + a.prenom).toLowerCase() !== fn || a.archived);
                 
@@ -1189,14 +1260,14 @@
                 
                 const heure = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                 const dateTelegram = new Date().toLocaleDateString('fr-FR');
-                const typeExclTelegram = typeExclusion === 'temporaire' ? '⏱️ Temporaire (1 mois)' : '🚫 Définitive';
-                const finTelegram = typeExclusion === 'temporaire' ? '\n📅 Fin: ' + new Date(dateFin).toLocaleDateString('fr-FR') : '';
+                const typeExclTelegram = finalType === 'temporaire' ? `⏱️ Temporaire (${dureeMois} mois)` : '🚫 Définitive';
+                const finTelegram = finalType === 'temporaire' ? '\n📅 Fin: ' + new Date(dateFin).toLocaleDateString('fr-FR') : '';
                 const msgTelegram = '🚫 *EXCLUSION*\n📅 ' + dateTelegram + '\n👤 ' + nom + ' ' + prenomF + '\n' + typeExclTelegram + finTelegram + '\n📍 Carpodrome\n💬 ' + motif + '\n👮 ' + controleurSanction + '\n🕐 ' + heure;
                 await envoyerNotificationTelegram(msgTelegram);
                 
-                pendingExclusionData = null; closeExclusion(); closeModal(); 
-                const typeText = typeExclusion === 'temporaire' ? 'TEMPORAIRE (1 mois)' : 'DÉFINITIVE'; 
-                const finText = typeExclusion === 'temporaire' ? `<br>📅 Fin de l'exclusion : ${new Date(dateFin).toLocaleDateString('fr-FR')}` : ''; 
+                pendingExclusionData = null; selectedExclusionType = null; closeExclusion(); closeModal(); 
+                const typeText = finalType === 'temporaire' ? `TEMPORAIRE (${dureeMois} mois)` : 'DÉFINITIVE'; 
+                const finText = finalType === 'temporaire' ? `<br>📅 Fin de l'exclusion : ${new Date(dateFin).toLocaleDateString('fr-FR')}` : ''; 
                 showAlert(`🚫 <strong>EXCLUSION ${typeText}</strong><br><br>${nom} ${prenomF} est maintenant exclu(e).${finText}<br><br>👮 Par: ${controleurSanction}`); 
             } catch(e) { console.error('Erreur:', e); showAlert('❌ Erreur: ' + e.message); }
         }
@@ -1215,7 +1286,8 @@
                     h += '<p style="color:#28a745;font-weight:bold;">✅ Exclusion temporaire EXPIRÉE</p>'; 
                     h += `<p><small>L'exclusion s'est terminée le ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}</small></p>`; 
                 } else { 
-                    const typeText = banni.typeExclusion === 'temporaire' ? '⏱️ EXCLU TEMPORAIREMENT' : '🚫 EXCLU DÉFINITIVEMENT'; 
+                    let dureeText = banni.dureeMois ? banni.dureeMois + ' mois' : '3 mois';
+                    const typeText = banni.typeExclusion === 'temporaire' ? `⏱️ EXCLU TEMPORAIREMENT (${dureeText})` : '🚫 EXCLU DÉFINITIVEMENT'; 
                     h += `<p style="color:#dc3545;font-weight:bold;">${typeText}</p>`; 
                     if (banni.typeExclusion === 'temporaire' && banni.dateFin) { h += `<p style="color:#ff9800;">📅 Fin de l'exclusion : ${new Date(banni.dateFin).toLocaleDateString('fr-FR')}</p>`; } 
                     if (banni.controleurSanction) h += `<p>👮 Sanctionné par: <strong>${banni.controleurSanction}</strong></p>`; 
